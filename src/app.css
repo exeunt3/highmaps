@@ -1,24 +1,62 @@
 :root {
-  font-family: Inter, system-ui, sans-serif;
-  color: #111827;
-  background: #f8fafc;
+  font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #e2e8f0;
+  background:
+    radial-gradient(circle at top left, #1f3c88 0%, transparent 45%),
+    radial-gradient(circle at top right, #7c3aed 0%, transparent 40%),
+    #020617;
+  line-height: 1.4;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background: transparent;
 }
 
 main {
-  padding: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
   display: grid;
-  gap: 16px;
+  gap: 18px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: 0.03em;
+  color: #f8fafc;
+  text-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+}
+
+.app-subtitle {
+  margin: 0;
+  color: #cbd5e1;
 }
 
 section {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 12px;
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.88));
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.4);
+  backdrop-filter: blur(6px);
+}
+
+h2,
+h3,
+h4 {
+  margin-top: 0;
+  color: #f8fafc;
+}
+
+label {
+  color: #cbd5e1;
 }
 
 .section-subtitle {
@@ -29,6 +67,68 @@ section {
 
 input, select, textarea, button {
   margin: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.6);
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  padding: 8px 10px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+textarea {
+  width: min(100%, 700px);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+button {
+  background: linear-gradient(135deg, #06b6d4, #7c3aed);
+  border-color: transparent;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.explorer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.error-text {
+  color: #fda4af;
+}
+
+.empty-state {
+  color: #cbd5e1;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 label {
