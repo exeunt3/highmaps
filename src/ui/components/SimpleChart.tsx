@@ -19,12 +19,43 @@ interface Props {
   onPointerMove?: PointerEventHandler<SVGSVGElement>;
   onPointerUp?: PointerEventHandler<SVGSVGElement>;
   onPointClick?: (id: string) => void;
+  rotation?: { yaw: number; pitch: number; roll?: number };
 }
 
-export const projectPoints = (points: EmbeddedPoint[], width: number, height: number): ViewPoint[] => {
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
-  const zs = points.map((p) => p.z ?? 0);
+const rotatePoint = (
+  point: EmbeddedPoint,
+  rotation: { yaw: number; pitch: number; roll?: number },
+) => {
+  const yaw = rotation.yaw;
+  const pitch = rotation.pitch;
+  const roll = rotation.roll ?? 0;
+  const cosY = Math.cos(yaw);
+  const sinY = Math.sin(yaw);
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const cosR = Math.cos(roll);
+  const sinR = Math.sin(roll);
+
+  const x1 = point.x * cosY - (point.z ?? 0) * sinY;
+  const z1 = point.x * sinY + (point.z ?? 0) * cosY;
+  const y2 = point.y * cosP - z1 * sinP;
+  const z2 = point.y * sinP + z1 * cosP;
+  const x3 = x1 * cosR - y2 * sinR;
+  const y3 = x1 * sinR + y2 * cosR;
+
+  return { ...point, x: x3, y: y3, z: z2 };
+};
+
+export const projectPoints = (
+  points: EmbeddedPoint[],
+  width: number,
+  height: number,
+  rotation: { yaw: number; pitch: number; roll?: number } = { yaw: 0, pitch: 0, roll: 0 },
+): ViewPoint[] => {
+  const rotated = points.map((point) => rotatePoint(point, rotation));
+  const xs = rotated.map((p) => p.x);
+  const ys = rotated.map((p) => p.y);
+  const zs = rotated.map((p) => p.z ?? 0);
   const minX = Math.min(...xs, 0);
   const maxX = Math.max(...xs, 1);
   const minY = Math.min(...ys, 0);
@@ -34,15 +65,36 @@ export const projectPoints = (points: EmbeddedPoint[], width: number, height: nu
   const cx = width / 2;
   const cy = height / 2;
 
-  return points.map((p) => {
+  const paddedWidth = width * 0.86;
+  const paddedHeight = height * 0.82;
+
+  const projected = rotated.map((p) => {
     const nx = ((p.x - minX) / (maxX - minX || 1)) * 2 - 1;
     const ny = ((p.y - minY) / (maxY - minY || 1)) * 2 - 1;
     const depth = ((p.z ?? 0) - minZ) / (maxZ - minZ || 1);
-    const perspective = 0.7 + depth * 0.65;
-    const x = cx + nx * (width * 0.42) * perspective;
-    const y = cy - ny * (height * 0.4) * perspective;
+    const perspective = 0.72 + depth * 0.5;
+    const x = cx + nx * (paddedWidth * 0.5) * perspective;
+    const y = cy - ny * (paddedHeight * 0.5) * perspective;
     return { ...p, px: x, py: y, depth, glow: 0.4 + depth * 0.6 };
   });
+
+  const minPx = Math.min(...projected.map((p) => p.px));
+  const maxPx = Math.max(...projected.map((p) => p.px));
+  const minPy = Math.min(...projected.map((p) => p.py));
+  const maxPy = Math.max(...projected.map((p) => p.py));
+  const availableW = width * 0.92;
+  const availableH = height * 0.9;
+  const spanX = Math.max(1, maxPx - minPx);
+  const spanY = Math.max(1, maxPy - minPy);
+  const fitScale = Math.min(availableW / spanX, availableH / spanY, 1.2);
+  const centerPx = (minPx + maxPx) / 2;
+  const centerPy = (minPy + maxPy) / 2;
+
+  return projected.map((point) => ({
+    ...point,
+    px: cx + (point.px - centerPx) * fitScale,
+    py: cy + (point.py - centerPy) * fitScale,
+  }));
 };
 
 export const SimpleChart = ({
@@ -56,15 +108,16 @@ export const SimpleChart = ({
   onPointerMove,
   onPointerUp,
   onPointClick,
+  rotation,
 }: Props) => {
   if (points.length === 0) return <div className="empty-state">Paste CSV to begin.</div>;
-  const projected = projectPoints(points, width, height);
+  const projected = projectPoints(points, width, height, rotation);
   const depthSorted = [...projected].sort((a, b) => a.depth - b.depth);
   const d = projected.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.px} ${p.py}`).join(' ');
   const hasBothSeries = points.some((point) => point.id.includes('|emotion')) && points.some((point) => point.id.includes('|narrative'));
 
   return (
-    <svg className="chart-svg" width={width} height={height} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+    <svg className="chart-svg" width={width} height={height} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onContextMenu={(event) => event.preventDefault()}>
       <defs>
         <radialGradient id="chartGlow" cx="50%" cy="45%" r="70%">
           <stop offset="0%" stopColor="rgba(56, 189, 248, 0.15)" />
