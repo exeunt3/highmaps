@@ -18,6 +18,7 @@ interface Props {
   onPointerDown?: PointerEventHandler<SVGSVGElement>;
   onPointerMove?: PointerEventHandler<SVGSVGElement>;
   onPointerUp?: PointerEventHandler<SVGSVGElement>;
+  onPointClick?: (id: string) => void;
 }
 
 export const projectPoints = (points: EmbeddedPoint[], width: number, height: number): ViewPoint[] => {
@@ -54,6 +55,7 @@ export const SimpleChart = ({
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onPointClick,
 }: Props) => {
   if (points.length === 0) return <div className="empty-state">Paste CSV to begin.</div>;
   const projected = projectPoints(points, width, height);
@@ -92,6 +94,7 @@ export const SimpleChart = ({
               stroke={selected ? 'rgba(254, 249, 195, 0.9)' : `rgba(186, 230, 253, ${0.35 + p.depth * 0.4})`}
               strokeWidth={selected ? 1.4 : 0.8}
               className={selected ? 'selected-point' : ''}
+              onClick={() => onPointClick?.(p.id)}
             />
           </g>
         );
