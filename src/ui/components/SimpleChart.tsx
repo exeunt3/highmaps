@@ -1,14 +1,24 @@
+import type { PointerEventHandler } from 'react';
 import type { EmbeddedPoint } from '../../types/models';
+
+interface ViewPoint extends EmbeddedPoint {
+  px: number;
+  py: number;
+}
 
 interface Props {
   points: EmbeddedPoint[];
   width?: number;
   height?: number;
   highlightIds?: Set<string>;
-  colorMode?: 'cool' | 'vivid';
+  selectionBox?: { x: number; y: number; w: number; h: number };
+  lassoPath?: Array<{ x: number; y: number }>;
+  onPointerDown?: PointerEventHandler<SVGSVGElement>;
+  onPointerMove?: PointerEventHandler<SVGSVGElement>;
+  onPointerUp?: PointerEventHandler<SVGSVGElement>;
 }
 
-const project = (points: EmbeddedPoint[], width: number, height: number) => {
+export const projectPoints = (points: EmbeddedPoint[], width: number, height: number): ViewPoint[] => {
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
   const minX = Math.min(...xs, 0);
@@ -23,37 +33,53 @@ const project = (points: EmbeddedPoint[], width: number, height: number) => {
   });
 };
 
-export const SimpleChart = ({ points, width = 480, height = 280, highlightIds, colorMode = 'cool' }: Props) => {
-  if (points.length === 0) return <div className="empty-state">No points</div>;
-  const projected = project(points, width, height);
+export const SimpleChart = ({
+  points,
+  width = 1180,
+  height = 700,
+  highlightIds,
+  selectionBox,
+  lassoPath,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: Props) => {
+  if (points.length === 0) return <div className="empty-state">Paste CSV to begin.</div>;
+  const projected = projectPoints(points, width, height);
   const d = projected.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.px} ${p.py}`).join(' ');
-  const strokeColor = colorMode === 'vivid' ? '#f472b6' : '#22d3ee';
-  const pointColor = colorMode === 'vivid' ? '#fef08a' : '#c4b5fd';
 
   return (
-    <svg width={width} height={height} style={{ border: '1px solid rgba(148, 163, 184, 0.3)', background: 'rgba(2, 6, 23, 0.85)', borderRadius: 14 }}>
-      <defs>
-        <linearGradient id={`line-grad-${colorMode}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={colorMode === 'vivid' ? '#f472b6' : '#22d3ee'} />
-          <stop offset="100%" stopColor={colorMode === 'vivid' ? '#facc15' : '#8b5cf6'} />
-        </linearGradient>
-      </defs>
-      <rect x={0} y={0} width={width} height={height} fill="rgba(15, 23, 42, 0.35)" rx={14} />
-      {[0.2, 0.4, 0.6, 0.8].map((t) => (
-        <line key={t} x1={15} x2={width - 15} y1={height * t} y2={height * t} stroke="rgba(148, 163, 184, 0.12)" />
-      ))}
-      <path d={d} fill="none" stroke={`url(#line-grad-${colorMode})`} strokeWidth={2.5} />
+    <svg className="chart-svg" width={width} height={height} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+      <path d={d} fill="none" stroke="rgba(125, 211, 252, 0.9)" strokeWidth={1.6} />
       {projected.map((p) => (
         <circle
           key={p.id}
           cx={p.px}
           cy={p.py}
-          r={highlightIds?.has(p.id) ? 5 : 3}
-          fill={highlightIds?.has(p.id) ? '#fb7185' : pointColor}
-          style={{ filter: 'drop-shadow(0 0 6px rgba(251, 113, 133, 0.35))' }}
+          r={highlightIds?.has(p.id) ? 4.2 : 2.1}
+          fill={highlightIds?.has(p.id) ? '#fde047' : 'rgba(167, 243, 208, 0.8)'}
+          className={highlightIds?.has(p.id) ? 'selected-point' : ''}
         />
       ))}
-      <circle cx={projected[projected.length - 1]?.px} cy={projected[projected.length - 1]?.py} r={5} fill={strokeColor} />
+      {selectionBox && (
+        <rect
+          x={Math.min(selectionBox.x, selectionBox.x + selectionBox.w)}
+          y={Math.min(selectionBox.y, selectionBox.y + selectionBox.h)}
+          width={Math.abs(selectionBox.w)}
+          height={Math.abs(selectionBox.h)}
+          fill="rgba(56, 189, 248, 0.08)"
+          stroke="rgba(125, 211, 252, 0.75)"
+          strokeDasharray="6 4"
+        />
+      )}
+      {lassoPath && lassoPath.length > 2 && (
+        <path
+          d={lassoPath.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z'}
+          fill="rgba(74, 222, 128, 0.08)"
+          stroke="rgba(74, 222, 128, 0.8)"
+          strokeDasharray="4 4"
+        />
+      )}
     </svg>
   );
 };
