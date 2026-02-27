@@ -13,6 +13,26 @@ interface SimulationDay {
   vector: number[];
 }
 
+type GeometryPresetId = 'simple' | 'line' | 'circle' | 'spiral' | 'helix' | 'wave' | 'torus' | 'sphere' | 'hyper';
+
+interface GeometryPreset {
+  id: GeometryPresetId;
+  label: string;
+  description: string;
+}
+
+const GEOMETRY_PRESETS: GeometryPreset[] = [
+  { id: 'simple', label: 'Simple', description: 'Minimal baseline projection' },
+  { id: 'line', label: 'Line', description: 'Linear track with subtle depth' },
+  { id: 'circle', label: 'Circle', description: 'Periodic cycle view' },
+  { id: 'spiral', label: 'Spiral', description: 'Growth and drift over time' },
+  { id: 'helix', label: 'Helix', description: 'Layered progression' },
+  { id: 'wave', label: 'Wave', description: 'Oscillation emphasis' },
+  { id: 'torus', label: 'Torus', description: 'Nested recurring loops' },
+  { id: 'sphere', label: 'Sphere', description: 'Dense 3D enclosure' },
+  { id: 'hyper', label: 'Hyperbolic', description: 'Higher-dimensional projection' },
+];
+
 const mulberry32 = (seed: number) => () => {
   let t = seed += 0x6D2B79F5;
   t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -34,18 +54,97 @@ const createYear = (): SimulationDay[] => {
   });
 };
 
-const toShapePoints = (rows: SimulationDay[], mode: 'simple' | 'hyper'): EmbeddedPoint[] => rows.map((row, i) => {
+const toShapePoints = (rows: SimulationDay[], mode: GeometryPresetId): EmbeddedPoint[] => rows.map((row, i) => {
+  const t = i / Math.max(1, rows.length - 1);
+  const theta = t * Math.PI * 12;
+  const phi = t * Math.PI * 2;
+  const [a, b, c, d, e, f] = row.vector;
+  const emotionIdx = EMOTION_LANGUAGE.indexOf(row.emotion);
+  const narrativeIdx = NARRATIVE_LANGUAGE.indexOf(row.narrative);
+
   if (mode === 'simple') {
     return {
       id: row.id,
       index: i,
       x: i,
-      y: EMOTION_LANGUAGE.indexOf(row.emotion) - NARRATIVE_LANGUAGE.indexOf(row.narrative),
-      z: (EMOTION_LANGUAGE.indexOf(row.emotion) + NARRATIVE_LANGUAGE.indexOf(row.narrative)) / 2,
+      y: emotionIdx - narrativeIdx,
+      z: (emotionIdx + narrativeIdx) / 2,
     };
   }
 
-  const [a, b, c, d, e, f] = row.vector;
+  if (mode === 'line') {
+    return {
+      id: row.id,
+      index: i,
+      x: t * 18 - 9,
+      y: Math.sin(theta * 0.5) * 0.8 + emotionIdx * 0.12,
+      z: Math.cos(theta * 0.4) * 0.9 + narrativeIdx * 0.1,
+    };
+  }
+
+  if (mode === 'circle') {
+    const radius = 2 + (emotionIdx - narrativeIdx) * 0.08;
+    return {
+      id: row.id,
+      index: i,
+      x: Math.cos(theta) * radius,
+      y: Math.sin(theta) * radius,
+      z: Math.sin(theta * 1.2) * 1.3,
+    };
+  }
+
+  if (mode === 'spiral') {
+    const radius = 0.25 + t * 2.8;
+    return {
+      id: row.id,
+      index: i,
+      x: Math.cos(theta) * radius,
+      y: Math.sin(theta) * radius,
+      z: t * 7 - 3.5,
+    };
+  }
+
+  if (mode === 'helix') {
+    return {
+      id: row.id,
+      index: i,
+      x: Math.cos(theta) * 2.1,
+      y: t * 7 - 3.5,
+      z: Math.sin(theta) * 2.1,
+    };
+  }
+
+  if (mode === 'wave') {
+    return {
+      id: row.id,
+      index: i,
+      x: t * 18 - 9,
+      y: Math.sin(theta) * 1.7 + (emotionIdx - 2) * 0.15,
+      z: Math.cos(theta * 0.55) * 1.8 + (narrativeIdx - 2) * 0.12,
+    };
+  }
+
+  if (mode === 'torus') {
+    const ring = 2.5 + Math.cos(theta * 0.8) * 0.7;
+    return {
+      id: row.id,
+      index: i,
+      x: ring * Math.cos(phi),
+      y: ring * Math.sin(phi),
+      z: Math.sin(theta * 0.8) * 1.8,
+    };
+  }
+
+  if (mode === 'sphere') {
+    return {
+      id: row.id,
+      index: i,
+      x: Math.cos(theta) * Math.sin(phi) * 2.5,
+      y: Math.sin(theta) * Math.sin(phi) * 2.5,
+      z: Math.cos(phi) * 2.5,
+    };
+  }
+
   return {
     id: row.id,
     index: i,
@@ -58,7 +157,8 @@ const toShapePoints = (rows: SimulationDay[], mode: 'simple' | 'hyper'): Embedde
 export const SimulationScreen = () => {
   const [rows] = useState<SimulationDay[]>(() => createYear());
   const [cursor, setCursor] = useState(0);
-  const [shapeMode, setShapeMode] = useState<'simple' | 'hyper'>('simple');
+  const [shapeMode, setShapeMode] = useState<GeometryPresetId>('simple');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const points = useMemo(() => toShapePoints(rows, shapeMode), [rows, shapeMode]);
   const active = rows[cursor];
@@ -78,6 +178,13 @@ export const SimulationScreen = () => {
     };
   }, [rows, cursor]);
 
+  const extractedNodes = useMemo(() => {
+    if (selectedIds.size === 0) return [];
+    return rows.filter((row) => selectedIds.has(row.id)).slice(0, 12);
+  }, [rows, selectedIds]);
+
+  const activePreset = GEOMETRY_PRESETS.find((preset) => preset.id === shapeMode) ?? GEOMETRY_PRESETS[0];
+
   return (
     <section className="geomode-shell">
       <header className="top-bar">
@@ -90,16 +197,44 @@ export const SimulationScreen = () => {
             <input type="range" min={0} max={rows.length - 1} value={cursor} onChange={(event) => setCursor(Number(event.target.value))} />
           </label>
           <p>{active.emotion} / {active.narrative}</p>
-          <label>Shape language
-            <select value={shapeMode} onChange={(event) => setShapeMode(event.target.value as 'simple' | 'hyper')}>
-              <option value="simple">Simple shapes (3D)</option>
-              <option value="hyper">Higher-dimensional projection</option>
+
+          <h3>Geometry renderings</h3>
+          <div className="geometry-render-list">
+            {GEOMETRY_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                className={shapeMode === preset.id ? 'selected' : ''}
+                onClick={() => setShapeMode(preset.id)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <label>Jump via dropdown
+            <select value={shapeMode} onChange={(event) => setShapeMode(event.target.value as GeometryPresetId)}>
+              {GEOMETRY_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>{preset.label}</option>
+              ))}
             </select>
           </label>
+          <p className="hint">Current geometry: {activePreset.description}</p>
         </aside>
 
         <section className="center-panel">
-          <SimpleChart points={points} width={980} height={500} highlightIds={new Set([active.id])} />
+          <SimpleChart
+            points={points}
+            width={980}
+            height={500}
+            highlightIds={new Set([active.id, ...selectedIds])}
+            onPointClick={(id) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
+          />
         </section>
 
         <aside className="panel-block right-panel">
@@ -107,6 +242,17 @@ export const SimulationScreen = () => {
           <p>Dominant hidden axis: <strong>{extractedInsight.dominantAxis}</strong></p>
           <p>Projection (axis1+axis3-axis5): <strong>{extractedInsight.projection}</strong></p>
           <p>Vector spread over recent window: <strong>{extractedInsight.spread}</strong></p>
+
+          <h3>Extracted nodes field</h3>
+          {extractedNodes.length === 0 ? (
+            <p className="hint">Click any nodes in the chart to extract them into this field.</p>
+          ) : (
+            <div className="extract-field">
+              {extractedNodes.map((row) => (
+                <p key={row.id}>Day {row.day}: {row.emotion} / {row.narrative}</p>
+              ))}
+            </div>
+          )}
           <p className="hint">This view converts higher-dimensional vectors into a lower-dimensional rendering to surface trends not obvious in raw categories.</p>
         </aside>
       </div>
