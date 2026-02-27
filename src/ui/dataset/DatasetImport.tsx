@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { inferSchema, parseCsv } from '../../core/schema/csv';
 import { useGeomodeStore } from '../../state/store';
 import type { FieldType, ViewConfig } from '../../types/models';
+import { InfoTip } from '../components/InfoTip';
 
 const SAMPLE_CSV = `date,value,group\n2024-01-01,10,A\n2024-01-02,12,A\n2024-01-03,9,B\n2024-01-04,11,B\n2024-01-05,8,A\n2024-01-06,14,A\n2024-01-07,7,B\n2024-01-08,15,B`;
 
@@ -53,14 +54,29 @@ export const DatasetImport = () => {
 
   return (
     <section>
-      <h2>1) Dataset Import</h2>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dataset name" />
+      <h2>1) Add Your Data</h2>
+      <p className="section-subtitle">
+        Start by pasting a CSV file. We will detect column types and prepare your data for charting.
+      </p>
+      <label>
+        Dataset name
+        <InfoTip content="This name is used in dropdowns later so you can recognize this upload." />
+      </label>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Website traffic by day" />
+
+      <label>
+        CSV data
+        <InfoTip content="Paste raw comma-separated values, including the first header row. Each later row becomes one point in the explorer." />
+      </label>
       <div>
         <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} rows={8} cols={70} />
       </div>
       {preview && (
         <div>
-          <h4>Field Types</h4>
+          <h4>
+            Confirm column meanings
+            <InfoTip content="Adjust any incorrectly detected types. The index column is used for the chart's horizontal position and ordering." />
+          </h4>
           {preview.inferred.fields.map((field) => (
             <div key={field.name} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
               <strong>{field.name}</strong>
@@ -79,13 +95,13 @@ export const DatasetImport = () => {
                   checked={(indexFieldOverride || preview.inferred.indexField) === field.name}
                   onChange={() => setIndexFieldOverride(field.name)}
                 />
-                index field
+                use as timeline/index
               </label>
             </div>
           ))}
         </div>
       )}
-      <button onClick={importDataset}>Import CSV</button>
+      <button onClick={importDataset}>Load data into explorer</button>
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
     </section>
   );
