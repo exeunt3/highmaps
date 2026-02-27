@@ -17,8 +17,10 @@ export const App = () => {
 
   return (
     <main>
-      <h1>GEOMODE</h1>
-      <p className="app-subtitle">A vivid geometry playground for transforming and extracting shape-driven datasets.</p>
+      <h1>GEOMODE — Guided Geometry Explorer</h1>
+      <p className="section-subtitle">
+        Follow the three steps below to upload data, shape a view, and export a focused result.
+      </p>
       <DatasetImport />
       <ExplorerScreen />
       <DerivedDatasetViewer />

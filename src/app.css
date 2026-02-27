@@ -59,10 +59,13 @@ label {
   color: #cbd5e1;
 }
 
-input,
-select,
-textarea,
-button {
+.section-subtitle {
+  margin: 4px 4px 10px;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+input, select, textarea, button {
   margin: 4px;
   border-radius: 10px;
   border: 1px solid rgba(100, 116, 139, 0.6);
@@ -126,4 +129,51 @@ button:active {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+label {
+  font-weight: 500;
+}
+
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+
+.info-tip__bubble {
+  position: absolute;
+  left: 22px;
+  top: -8px;
+  width: 240px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 10;
+}
+
+.info-tip:hover .info-tip__bubble,
+.info-tip:focus .info-tip__bubble,
+.info-tip:focus-within .info-tip__bubble {
+  opacity: 1;
+  transform: translateY(0);
 }
