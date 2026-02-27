@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useEffect, useMemo, useState, type PointerEvent, type WheelEvent } from 'react';
 import type { EmbeddedPoint } from '../../types/models';
 import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
@@ -132,6 +132,9 @@ export const ExplorerScreen = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
+  const [rotation, setRotation] = useState({ yaw: 0.4, pitch: -0.3, roll: 0 });
+  const [rotating, setRotating] = useState<{ x: number; y: number }>();
+  const [autoSpin, setAutoSpin] = useState(true);
 
   const basePoints = useMemo(() => {
     if (graphLayer === 'emotion') return toEmotionPoints(entries);
@@ -140,7 +143,7 @@ export const ExplorerScreen = () => {
   }, [entries, graphLayer]);
 
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints, control), [shapeId, basePoints, control]);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 980, 500), [shapedPoints]);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 980, 500, rotation), [shapedPoints, rotation]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
@@ -151,6 +154,15 @@ export const ExplorerScreen = () => {
       return { model, confidence: Math.round(clamp(100 - error * 8, 8, 98)) };
     }).sort((a, b) => b.confidence - a.confidence);
   }, [chartPoints]);
+
+
+  useEffect(() => {
+    if (!autoSpin || rotating) return;
+    const id = window.setInterval(() => {
+      setRotation((prev) => ({ ...prev, yaw: prev.yaw + 0.02 }));
+    }, 40);
+    return () => window.clearInterval(id);
+  }, [autoSpin, rotating]);
 
   const progress = useMemo(() => intentions.map((intent) => {
     let metric = 0.5;
@@ -169,23 +181,46 @@ export const ExplorerScreen = () => {
 
   const onWheel = (event: WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
+    if (event.shiftKey) {
+      setRotation((prev) => ({ ...prev, roll: clamp(prev.roll + Math.sign(event.deltaY) * 0.08, -1.2, 1.2) }));
+      return;
+    }
     setControl((prev) => clamp(prev + Math.sign(event.deltaY) * -0.12, 0.5, 4));
   };
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
+    if (event.shiftKey || event.button === 1 || event.button === 2) {
+      setRotating({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      return;
+    }
     setSelectionBox({ x: event.clientX - rect.left, y: event.clientY - rect.top, w: 0, h: 0 });
   };
 
   const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
-    if (!selectionBox) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    if (rotating) {
+      const dx = x - rotating.x;
+      const dy = y - rotating.y;
+      setRotation((prev) => ({
+        ...prev,
+        yaw: prev.yaw + dx * 0.015,
+        pitch: clamp(prev.pitch + dy * 0.012, -1.3, 1.3),
+      }));
+      setRotating({ x, y });
+      return;
+    }
+    if (!selectionBox) return;
     setSelectionBox((prev) => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : prev);
   };
 
   const onPointerUp = () => {
+    if (rotating) {
+      setRotating(undefined);
+      return;
+    }
     if (selectionBox) {
       const left = Math.min(selectionBox.x, selectionBox.x + selectionBox.w);
       const right = Math.max(selectionBox.x, selectionBox.x + selectionBox.w);
@@ -218,7 +253,8 @@ export const ExplorerScreen = () => {
             {SHAPES.map((shape) => (
               <button key={shape} className={shapeId === shape ? 'selected' : ''} onClick={() => setShapeId(shape)}>{shape}</button>
             ))}
-            <span className="hint">Scroll to adjust shape</span>
+            <button onClick={() => setAutoSpin((prev) => !prev)}>{autoSpin ? 'Pause spin' : 'Auto spin'}</button>
+            <span className="hint">Scroll = morph shape · Shift+drag/middle-drag = rotate 3D · Shift+scroll = roll</span>
           </div>
           <label>Graph layer
             <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
@@ -238,6 +274,7 @@ export const ExplorerScreen = () => {
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              rotation={rotation}
             />
           ) : <p className="empty-state">No logs yet. Add entries on the Daily log page first.</p>}
         </section>
