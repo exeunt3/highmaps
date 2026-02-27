@@ -5,6 +5,7 @@ import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
 const SHAPES = ['line', 'circle', 'spiral', 'helix', 'sphere', 'torus', 'wave', 'grid'] as const;
 type ShapeId = (typeof SHAPES)[number];
+type GraphLayer = 'emotion' | 'narrative' | 'both';
 
 const INTENTIONS = [
   { label: 'Stabilize weekly baseline', target: 0.75 },
@@ -69,12 +70,20 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[], control: num
   });
 };
 
-const toBasePoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.map((entry, index) => ({
-  id: entry.id,
+const toEmotionPoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.map((entry, index) => ({
+  id: `${entry.id}|emotion`,
   index,
   x: index,
   y: entry.emotion.valence,
   z: entry.emotion.arousal - 2,
+}));
+
+const toNarrativePoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.map((entry, index) => ({
+  id: `${entry.id}|narrative`,
+  index,
+  x: index,
+  y: entry.narrative.agencyLevel - entry.narrative.conflictLevel,
+  z: entry.narrative.closureLevel - 2,
 }));
 
 const computeSummary = (entries: GeomodeEntry[]) => {
@@ -122,8 +131,14 @@ export const ExplorerScreen = () => {
   const [control, setControl] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
+  const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
 
-  const basePoints = useMemo(() => toBasePoints(entries), [entries]);
+  const basePoints = useMemo(() => {
+    if (graphLayer === 'emotion') return toEmotionPoints(entries);
+    if (graphLayer === 'narrative') return toNarrativePoints(entries);
+    return [...toEmotionPoints(entries), ...toNarrativePoints(entries)];
+  }, [entries, graphLayer]);
+
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints, control), [shapeId, basePoints, control]);
   const chartPoints = useMemo(() => projectPoints(shapedPoints, 980, 500), [shapedPoints]);
 
@@ -191,7 +206,7 @@ export const ExplorerScreen = () => {
         <aside className="left-panel panel-block">
           <h3>Timeline cards</h3>
           {entries.map((entry) => (
-            <button key={entry.id} className="entry-card" onClick={() => setSelectedIds(new Set([entry.id]))}>
+            <button key={entry.id} className="entry-card" onClick={() => setSelectedIds(new Set([`${entry.id}|emotion`, `${entry.id}|narrative`]))}>
               <span>{entry.date}</span>
               <span>{entry.emotion.primaryEmotion}</span>
             </button>
@@ -205,6 +220,13 @@ export const ExplorerScreen = () => {
             ))}
             <span className="hint">Scroll to adjust shape</span>
           </div>
+          <label>Graph layer
+            <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
+              <option value="emotion">Emotion only</option>
+              <option value="narrative">Narrative only</option>
+              <option value="both">Both together</option>
+            </select>
+          </label>
 
           {entries.length > 0 ? (
             <SimpleChart
