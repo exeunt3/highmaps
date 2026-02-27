@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { inferSchema, parseCsv } from '../../core/schema/csv';
-import { useGeomodeStore } from '../../state/store';
+import { NARRATIVE_ATOMS, PRIMARY_EMOTIONS, useGeomodeStore } from '../../state/store';
 import type { FieldType, ViewConfig } from '../../types/models';
 
 const SAMPLE_CSV = `date,value,group\n2024-01-01,10,A\n2024-01-02,12,A\n2024-01-03,9,B\n2024-01-04,11,B\n2024-01-05,8,A\n2024-01-06,14,A\n2024-01-07,7,B\n2024-01-08,15,B`;
@@ -9,8 +9,20 @@ interface Props {
   onLoaded?: () => void;
 }
 
+const DATE_KEYS = ['date', 'day', 'timestamp', 'time'];
+
+const toNumber = (value: string | number | boolean | null | undefined, fallback = 0) => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return fallback;
+};
+
 export const DatasetImport = ({ onLoaded }: Props) => {
   const addDataset = useGeomodeStore((s) => s.addDataset);
+  const upsertEntry = useGeomodeStore((s) => s.upsertEntry);
   const [name, setName] = useState('My Data');
   const [csvText, setCsvText] = useState(SAMPLE_CSV);
   const [error, setError] = useState<string>();
@@ -53,6 +65,51 @@ export const DatasetImport = ({ onLoaded }: Props) => {
       };
 
       addDataset(dataset, schema, viewConfig);
+
+      const fields = schema.fields.map((field) => field.name);
+      const dateField = DATE_KEYS.find((key) => fields.includes(key)) ?? schema.indexField;
+      const emotionField = fields.find((field) => /emotion/i.test(field));
+      const narrativeField = fields.find((field) => /narrative|atom|story/i.test(field));
+      const noteField = fields.find((field) => /note|text|journal|entry/i.test(field));
+
+      dataset.rows.forEach((row, index) => {
+        const dateRaw = row[dateField];
+        const fallbackDate = new Date(Date.now() + index * 86_400_000).toISOString().slice(0, 10);
+        const date = typeof dateRaw === 'string' && dateRaw.trim() ? dateRaw.slice(0, 10) : fallbackDate;
+
+        const emotionRaw = emotionField ? row[emotionField] : undefined;
+        const primaryEmotion = typeof emotionRaw === 'string' && PRIMARY_EMOTIONS.includes(emotionRaw as typeof PRIMARY_EMOTIONS[number])
+          ? emotionRaw as typeof PRIMARY_EMOTIONS[number]
+          : 'calm';
+
+        const narrativeRaw = narrativeField ? row[narrativeField] : undefined;
+        const atom = typeof narrativeRaw === 'string' && NARRATIVE_ATOMS.includes(narrativeRaw as typeof NARRATIVE_ATOMS[number])
+          ? narrativeRaw as typeof NARRATIVE_ATOMS[number]
+          : 'beginning';
+
+        const noteRaw = noteField ? row[noteField] : undefined;
+        const note = typeof noteRaw === 'string' ? noteRaw.slice(0, 240) : '';
+
+        upsertEntry(date, {
+          emotion: {
+            primaryEmotion,
+            valence: toNumber(row.valence, 0),
+            arousal: toNumber(row.arousal, 2),
+            energy: toNumber(row.energy, 2),
+            clarity: toNumber(row.clarity, 2),
+            sociality: toNumber(row.sociality, 0),
+            note,
+          },
+          narrative: {
+            atoms: [atom],
+            conflictLevel: toNumber(row.conflictLevel, 0),
+            agencyLevel: toNumber(row.agencyLevel, 0),
+            closureLevel: toNumber(row.closureLevel, 0),
+          },
+          groupId: typeof row.group === 'string' ? row.group : undefined,
+        });
+      });
+
       setError(undefined);
       onLoaded?.();
     } catch (err) {

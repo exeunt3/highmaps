@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   NARRATIVE_ATOMS,
   PRIMARY_EMOTIONS,
@@ -51,6 +51,29 @@ export const LogScreen = () => {
   const active = entries.find((entry) => entry.date === date);
   const activeEmotionChoice = useMemo(() => detectEmotionChoice(active), [active]);
   const activeNarrativeChoice = useMemo(() => detectNarrativeChoice(active), [active]);
+  const [emotionChoice, setEmotionChoice] = useState(activeEmotionChoice);
+  const [narrativeChoice, setNarrativeChoice] = useState(activeNarrativeChoice);
+  const [note, setNote] = useState(emotionState(active).note ?? '');
+
+  useEffect(() => {
+    setEmotionChoice(activeEmotionChoice);
+    setNarrativeChoice(activeNarrativeChoice);
+    setNote(emotionState(active).note ?? '');
+  }, [activeEmotionChoice, activeNarrativeChoice, active]);
+
+  const logEntry = () => {
+    upsertEntry(date, {
+      emotion: {
+        ...emotionState(active),
+        primaryEmotion: emotionChoice,
+        note: note.slice(0, 240),
+      },
+      narrative: {
+        ...narrativeState(active),
+        atoms: [narrativeChoice],
+      },
+    });
+  };
 
   return (
     <section className="geomode-shell">
@@ -67,16 +90,11 @@ export const LogScreen = () => {
         <section className="center-panel panel-block">
           <h3>Emotion input</h3>
           <label>Emotion (multiple choice)
-            <select value={activeEmotionChoice} onChange={(event) => {
+            <select value={emotionChoice} onChange={(event) => {
               const primaryEmotion = PRIMARY_EMOTIONS.includes(event.target.value as typeof PRIMARY_EMOTIONS[number])
                 ? event.target.value as typeof PRIMARY_EMOTIONS[number]
                 : 'calm';
-              upsertEntry(date, {
-                emotion: {
-                  ...emotionState(active),
-                  primaryEmotion,
-                },
-              });
+              setEmotionChoice(primaryEmotion);
             }}>
               {PRIMARY_EMOTIONS.map((emotion) => <option key={emotion} value={emotion}>{formatLabel(emotion)}</option>)}
             </select>
@@ -84,33 +102,39 @@ export const LogScreen = () => {
 
           <h3>Narrative input</h3>
           <label>Narrative (multiple choice)
-            <select value={activeNarrativeChoice} onChange={(event) => {
+            <select value={narrativeChoice} onChange={(event) => {
               const selectedAtom = NARRATIVE_ATOMS.includes(event.target.value as typeof NARRATIVE_ATOMS[number])
                 ? event.target.value as typeof NARRATIVE_ATOMS[number]
                 : 'beginning';
-              upsertEntry(date, {
-                narrative: {
-                  ...narrativeState(active),
-                  atoms: [selectedAtom],
-                },
-              });
+              setNarrativeChoice(selectedAtom);
             }}>
               {NARRATIVE_ATOMS.map((atom) => <option key={atom} value={atom}>{formatLabel(atom)}</option>)}
             </select>
           </label>
 
           <label>Optional note
-            <textarea maxLength={240} value={emotionState(active).note} onChange={(event) => upsertEntry(date, { emotion: { ...emotionState(active), note: event.target.value.slice(0, 240) } })} />
+            <textarea maxLength={240} value={note} onChange={(event) => setNote(event.target.value.slice(0, 240))} />
           </label>
+          <button onClick={logEntry}>Log emotion + narrative</button>
         </section>
 
         <aside className="right-panel panel-block">
           <h3>Entries logged</h3>
           <p>{entries.length}</p>
+          {entries.length > 0 && (
+            <div className="extract-field">
+              {entries.slice().reverse().slice(0, 8).map((entry) => (
+                <p key={entry.id}>{entry.date}: {formatLabel(entry.emotion.primaryEmotion)} · {formatLabel(entry.narrative.atoms[0] ?? 'beginning')}</p>
+              ))}
+            </div>
+          )}
           <p className="hint">Use Geometry Map layer = <strong>Both</strong> to view emotion and narrative together.</p>
         </aside>
       </div>
-      {showLoad && <DatasetImport onLoaded={() => setShowLoad(false)} />}
+      {showLoad && <DatasetImport onLoaded={() => {
+        setShowLoad(false);
+        window.location.hash = 'map';
+      }} />}
     </section>
   );
 };
