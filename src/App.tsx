@@ -17,7 +17,8 @@ export const App = () => {
 
   return (
     <main>
-      <h1>GEOMODE — Geometry Explorer MVP</h1>
+      <h1>GEOMODE</h1>
+      <p className="app-subtitle">A vivid geometry playground for transforming and extracting shape-driven datasets.</p>
       <DatasetImport />
       <ExplorerScreen />
       <DerivedDatasetViewer />

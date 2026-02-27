@@ -54,6 +54,7 @@ export const DatasetImport = () => {
   return (
     <section>
       <h2>1) Dataset Import</h2>
+      <p className="empty-state">Paste CSV data, tune field types, and launch a polished shape workflow.</p>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dataset name" />
       <div>
         <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} rows={8} cols={70} />
@@ -86,7 +87,7 @@ export const DatasetImport = () => {
         </div>
       )}
       <button onClick={importDataset}>Import CSV</button>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
     </section>
   );
 };
