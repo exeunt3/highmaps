@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type PointerEvent, type WheelEvent } from 'react';
 import type { EmbeddedPoint } from '../../types/models';
 import { SimpleChart } from '../components/SimpleChart';
 
@@ -32,6 +32,9 @@ const GEOMETRY_PRESETS: GeometryPreset[] = [
   { id: 'sphere', label: 'Sphere', description: 'Dense 3D enclosure' },
   { id: 'hyper', label: 'Hyperbolic', description: 'Higher-dimensional projection' },
 ];
+
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
 const mulberry32 = (seed: number) => () => {
   let t = seed += 0x6D2B79F5;
@@ -159,6 +162,9 @@ export const SimulationScreen = () => {
   const [cursor, setCursor] = useState(0);
   const [shapeMode, setShapeMode] = useState<GeometryPresetId>('simple');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rotation, setRotation] = useState({ yaw: 0.25, pitch: -0.28, roll: 0 });
+  const [rotating, setRotating] = useState<{ x: number; y: number }>();
+  const [autoSpin, setAutoSpin] = useState(true);
 
   const points = useMemo(() => toShapePoints(rows, shapeMode), [rows, shapeMode]);
   const active = rows[cursor];
@@ -185,8 +191,49 @@ export const SimulationScreen = () => {
 
   const activePreset = GEOMETRY_PRESETS.find((preset) => preset.id === shapeMode) ?? GEOMETRY_PRESETS[0];
 
+  useEffect(() => {
+    if (!autoSpin || rotating) return;
+    const id = window.setInterval(() => {
+      setRotation((prev) => ({ ...prev, yaw: prev.yaw + 0.02 }));
+    }, 40);
+    return () => window.clearInterval(id);
+  }, [autoSpin, rotating]);
+
+  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (event.shiftKey) {
+      setRotation((prev) => ({ ...prev, roll: clamp(prev.roll + Math.sign(event.deltaY) * 0.08, -1.2, 1.2) }));
+      return;
+    }
+    setRotation((prev) => ({ ...prev, pitch: clamp(prev.pitch + Math.sign(event.deltaY) * 0.06, -1.3, 1.3) }));
+  };
+
+  const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setRotating({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+  };
+
+  const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    if (!rotating) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const dx = x - rotating.x;
+    const dy = y - rotating.y;
+    setRotation((prev) => ({
+      ...prev,
+      yaw: prev.yaw + dx * 0.015,
+      pitch: clamp(prev.pitch + dy * 0.012, -1.3, 1.3),
+    }));
+    setRotating({ x, y });
+  };
+
+  const onPointerUp = () => {
+    setRotating(undefined);
+  };
+
   return (
-    <section className="geomode-shell">
+    <section className="geomode-shell" onWheel={onWheel}>
       <header className="top-bar">
         <strong>GEOMODE — Year simulation</strong>
       </header>
@@ -218,13 +265,15 @@ export const SimulationScreen = () => {
             </select>
           </label>
           <p className="hint">Current geometry: {activePreset.description}</p>
+          <button onClick={() => setAutoSpin((prev) => !prev)}>{autoSpin ? 'Pause 360 view' : 'Start 360 view'}</button>
+          <p className="hint">Drag anywhere in the chart field to rotate · Scroll to tilt · Shift+scroll to roll</p>
         </aside>
 
         <section className="center-panel">
           <SimpleChart
             points={points}
-            width={980}
-            height={500}
+            width={1120}
+            height={620}
             highlightIds={new Set([active.id, ...selectedIds])}
             onPointClick={(id) => {
               setSelectedIds((prev) => {
@@ -234,6 +283,10 @@ export const SimulationScreen = () => {
                 return next;
               });
             }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            rotation={rotation}
           />
         </section>
 
