@@ -11,7 +11,81 @@ import type {
 } from '../types/models';
 import { loadState, saveState } from '../core/storage/indexedDb';
 
+export const PRIMARY_EMOTIONS = [
+  'calm',
+  'joy',
+  'gratitude',
+  'tenderness',
+  'curiosity',
+  'confidence',
+  'awe',
+  'desire',
+  'sadness',
+  'anxiety',
+  'irritation',
+  'anger',
+  'shame',
+  'numbness',
+  'fatigue',
+  'loneliness',
+] as const;
+
+export const NARRATIVE_ATOMS = [
+  'beginning',
+  'setup',
+  'rising_action',
+  'complication',
+  'reversal',
+  'turning_point',
+  'crisis',
+  'climax',
+  'falling_action',
+  'resolution',
+  'aftermath',
+  'digression',
+  'stasis',
+  'echo',
+] as const;
+
+type Role = 'protagonist' | 'support' | 'observer';
+
+export interface EmotionEntry {
+  primaryEmotion: (typeof PRIMARY_EMOTIONS)[number];
+  secondaryEmotions: Array<(typeof PRIMARY_EMOTIONS)[number]>;
+  valence: number;
+  arousal: number;
+  energy: number;
+  clarity: number;
+  sociality: number;
+  stressors: string[];
+  regulators: string[];
+  note?: string;
+}
+
+export interface NarrativeEntry {
+  atoms: Array<(typeof NARRATIVE_ATOMS)[number]>;
+  role: Role;
+  conflictLevel: number;
+  agencyLevel: number;
+  closureLevel: number;
+}
+
+export interface GeomodeEntry {
+  id: string;
+  date: string;
+  emotion: EmotionEntry;
+  narrative: NarrativeEntry;
+  groupId?: string;
+}
+
+export interface Intention {
+  id: string;
+  label: string;
+  target: number;
+}
+
 interface GeomodeState {
+  // legacy dataset path
   datasets: Dataset[];
   schemas: Record<string, FieldSchema>;
   viewConfigs: Record<string, ViewConfig>;
@@ -20,6 +94,11 @@ interface GeomodeState {
   derivedDatasets: DerivedDataset[];
   selectedDatasetId?: string;
   selectedDerivedId?: string;
+
+  // new product path
+  entries: GeomodeEntry[];
+  intentions: Intention[];
+
   hydrated: boolean;
   addDataset: (dataset: Dataset, schema: FieldSchema, viewConfig: ViewConfig) => void;
   setSchema: (datasetId: string, schema: FieldSchema) => void;
@@ -29,11 +108,37 @@ interface GeomodeState {
   addDerivedDataset: (dataset: DerivedDataset) => void;
   setSelectedDataset: (datasetId: string) => void;
   setSelectedDerived: (datasetId?: string) => void;
+
+  upsertEntry: (date: string, update: { emotion?: Partial<EmotionEntry>; narrative?: Partial<NarrativeEntry>; groupId?: string }) => void;
+  setGroupForEntries: (entryIds: string[], groupId?: string) => void;
+  addIntention: (label: string, target: number) => void;
+  removeIntention: (id: string) => void;
   hydrate: () => Promise<void>;
 }
 
 const initialTransform = transformRegistry.list()[0];
 const initialExtractor = extractorRegistry.list()[0];
+
+const defaultEmotion = (): EmotionEntry => ({
+  primaryEmotion: 'calm',
+  secondaryEmotions: [],
+  valence: 0,
+  arousal: 2,
+  energy: 2,
+  clarity: 2,
+  sociality: 0,
+  stressors: [],
+  regulators: [],
+  note: '',
+});
+
+const defaultNarrative = (): NarrativeEntry => ({
+  atoms: [],
+  role: 'observer',
+  conflictLevel: 0,
+  agencyLevel: 0,
+  closureLevel: 0,
+});
 
 export const useGeomodeStore = create<GeomodeState>((set, get) => ({
   datasets: [],
@@ -48,6 +153,8 @@ export const useGeomodeStore = create<GeomodeState>((set, get) => ({
     params: initialExtractor?.paramSchema ?? {},
   },
   derivedDatasets: [],
+  entries: [],
+  intentions: [],
   hydrated: false,
   addDataset: (dataset, schema, viewConfig) => set((state) => ({
     datasets: [...state.datasets, dataset],
@@ -65,6 +172,36 @@ export const useGeomodeStore = create<GeomodeState>((set, get) => ({
   })),
   setSelectedDataset: (datasetId) => set({ selectedDatasetId: datasetId }),
   setSelectedDerived: (datasetId) => set({ selectedDerivedId: datasetId }),
+  upsertEntry: (date, update) => set((state) => {
+    const existing = state.entries.find((entry) => entry.date === date);
+    if (existing) {
+      return {
+        entries: state.entries.map((entry) => entry.date === date ? {
+          ...entry,
+          ...update,
+          emotion: { ...entry.emotion, ...update.emotion },
+          narrative: { ...entry.narrative, ...update.narrative },
+        } : entry),
+      };
+    }
+
+    return {
+      entries: [...state.entries, {
+        id: crypto.randomUUID(),
+        date,
+        emotion: { ...defaultEmotion(), ...(update.emotion ?? {}) },
+        narrative: { ...defaultNarrative(), ...(update.narrative ?? {}) },
+        groupId: update.groupId,
+      }].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  }),
+  setGroupForEntries: (entryIds, groupId) => set((state) => ({
+    entries: state.entries.map((entry) => entryIds.includes(entry.id) ? { ...entry, groupId } : entry),
+  })),
+  addIntention: (label, target) => set((state) => ({
+    intentions: [...state.intentions, { id: crypto.randomUUID(), label, target }],
+  })),
+  removeIntention: (id) => set((state) => ({ intentions: state.intentions.filter((item) => item.id !== id) })),
   hydrate: async () => {
     const raw = await loadState();
     if (raw) {
@@ -78,6 +215,8 @@ export const useGeomodeStore = create<GeomodeState>((set, get) => ({
         derivedDatasets: parsed.derivedDatasets ?? [],
         selectedDatasetId: parsed.selectedDatasetId,
         selectedDerivedId: parsed.selectedDerivedId,
+        entries: parsed.entries ?? [],
+        intentions: parsed.intentions ?? [],
         hydrated: true,
       });
       return;
@@ -97,6 +236,8 @@ useGeomodeStore.subscribe((state) => {
     derivedDatasets: state.derivedDatasets,
     selectedDatasetId: state.selectedDatasetId,
     selectedDerivedId: state.selectedDerivedId,
+    entries: state.entries,
+    intentions: state.intentions,
   };
   void saveState(JSON.stringify(serializable));
 });
