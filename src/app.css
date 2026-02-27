@@ -35,13 +35,20 @@ button.active, button.selected { border-color: rgba(125, 211, 252, 0.95); }
   gap: 12px;
   padding: 12px;
 }
-.left-panel,.right-panel {
-  border: 1px solid rgba(148,163,184,0.2);
-  border-radius: 12px;
-  padding: 12px;
-  background: rgba(2, 6, 23, 0.45);
-  overflow: auto;
-  max-height: calc(100vh - 90px);
+
+.chart-svg {
+  border: none;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.12), rgba(2, 6, 23, 0.2) 42%, rgba(2, 6, 23, 0.95) 100%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.6), rgba(2, 6, 23, 0.2));
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 60px rgba(56, 189, 248, 0.08),
+    0 24px 60px rgba(2, 6, 23, 0.65);
+}
+
+.selected-point {
+  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.85));
 }
 .center-panel {
   border: 1px solid rgba(148,163,184,0.15);

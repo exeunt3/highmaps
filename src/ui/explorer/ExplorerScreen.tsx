@@ -31,38 +31,88 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[], control: num
     const t = i / Math.max(1, points.length - 1);
     const theta = (Math.PI * 2 * i) / period;
     switch (shapeId) {
-      case 'line': return { ...point, x: t * 12 - 6, y: 0 };
-      case 'circle': return { ...point, x: Math.cos(theta) * 3, y: Math.sin(theta) * 3 };
+      case 'line':
+        return { ...point, x: t * 10 - 5, y: 0, z: Math.sin(theta * 0.35) * 0.8 };
+      case 'circle':
+        return { ...point, x: Math.cos(theta) * scale, y: Math.sin(theta) * scale, z: Math.sin(theta * 1.4) * 1.1 };
       case 'spiral': {
-        const r = 0.3 + t * (2.3 + control * 0.7);
-        return { ...point, x: Math.cos(theta) * r, y: Math.sin(theta) * r };
+        const r = 0.3 + t * 2.4 * scale;
+        return { ...point, x: Math.cos(theta) * r, y: Math.sin(theta) * r, z: t * 5 - 2.5 };
       }
-      case 'helix': return { ...point, x: Math.cos(theta) * 2.3, y: t * 8 - 4 + Math.sin(theta) * 0.5 };
-      case 'cylinder': return { ...point, x: Math.cos(theta) * 2.5, y: t * 8 - 4 };
-      case 'torus': {
-        const phi = (Math.PI * 2 * i) / Math.max(1, points.length);
-        const ring = 2.2 + Math.cos(theta) * (0.5 + control * 0.1);
-        return { ...point, x: ring * Math.cos(phi), y: ring * Math.sin(phi) };
-      }
+      case 'helix':
+        return { ...point, x: Math.cos(theta) * scale, y: t * 5 - 2.5 + Math.sin(theta * 0.4) * 0.6, z: Math.sin(theta) * scale * 1.4 };
       case 'sphere': {
         const phi = Math.PI * t;
-        return { ...point, x: Math.cos(theta) * Math.sin(phi) * 3, y: Math.cos(phi) * 3 };
+        return {
+          ...point,
+          x: Math.cos(theta) * Math.sin(phi) * 2,
+          y: Math.cos(phi) * 2,
+          z: Math.sin(theta) * Math.sin(phi) * 2,
+        };
       }
-      case 'möbius': {
-        const u = theta;
-        const v = (t - 0.5) * (0.8 + control * 0.2);
-        const x = (1 + v * Math.cos(u / 2)) * Math.cos(u);
-        const y = (1 + v * Math.cos(u / 2)) * Math.sin(u);
-        return { ...point, x: x * 2.2, y: y * 2.2 };
+      case 'torus': {
+        const phi = (Math.PI * 2 * i) / Math.max(points.length, 1);
+        const ring = 1.4 + 0.65 * Math.cos(theta * 0.8);
+        return { ...point, x: ring * Math.cos(phi), y: ring * Math.sin(phi), z: Math.sin(theta * 0.8) * 1.6 };
+      }
+      case 'grid': {
+        const cols = Math.max(3, Math.round(8 + control * 2));
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        return {
+          ...point,
+          x: col - cols / 2,
+          y: row * 0.75 - 4,
+          z: Math.sin(col * 0.7) * 0.8 + Math.cos(row * 0.6) * 0.8,
+        };
+      }
+      case 'wave':
+        return {
+          ...point,
+          x: t * 12 - 6,
+          y: Math.sin(theta) * (1.2 + control * 0.2),
+          z: Math.cos(theta * 0.55) * (1.4 + control * 0.15),
+        };
+      case 'lissajous': {
+        const a = 3 + Math.round(control);
+        const b = 2 + Math.round(control * 1.6);
+        const delta = Math.PI / (2.4 + control * 0.4);
+        return {
+          ...point,
+          x: Math.sin(a * theta + delta) * (1.8 + control * 0.25),
+          y: Math.sin(b * theta) * (1.8 + control * 0.25),
+          z: Math.sin((a + b) * theta * 0.35) * 2,
+        };
+      }
+      case 'epicycloid': {
+        const k = 3 + Math.round(control * 1.2);
+        const r = 0.55 + control * 0.1;
+        const R = r * k;
+        const phi = theta * 0.65;
+        const x = (R + r) * Math.cos(phi) - r * Math.cos(((R + r) / r) * phi);
+        const y = (R + r) * Math.sin(phi) - r * Math.sin(((R + r) / r) * phi);
+        return { ...point, x: x * 0.45, y: y * 0.45, z: Math.cos(phi * 1.6) * 1.8 };
+      }
+      case 'poincare': {
+        const radial = Math.tanh(t * (2.1 + control * 0.35));
+        const angle = theta * (1.4 + control * 0.15) + Math.sin(theta * 0.35) * 0.3;
+        return {
+          ...point,
+          x: radial * Math.cos(angle) * 2.4,
+          y: radial * Math.sin(angle) * 2.4,
+          z: (1 - radial * radial) * 2.2 - 1,
+        };
       }
       case 'hyperbolic': {
         const v = t * 2.2 - 1.1;
         const sinh = (Math.exp(v) - Math.exp(-v)) / 2;
-        return { ...point, x: Math.sin(theta) * (1.2 + Math.abs(v) * 0.6), y: sinh * (1.4 + control * 0.1) };
-      }
-      case 'tesseract': {
-        const q = (i % 4) / 4;
-        return { ...point, x: ((i % 8) - 4) * 0.7 + q * 2, y: Math.floor(i / 8) * 0.7 - 3 + q };
+        const tube = 0.4 + cosh * (0.3 + control * 0.03);
+        return {
+          ...point,
+          x: Math.cos(theta * 0.75) * tube,
+          y: sinh * 1.55,
+          z: Math.sin(theta * 0.75) * tube,
+        };
       }
     }
   });
