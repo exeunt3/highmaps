@@ -7,22 +7,6 @@ import {
 } from '../../state/store';
 import { DatasetImport } from '../dataset/DatasetImport';
 
-const EMOTION_CHOICES = [
-  { id: 'grounded', label: 'Grounded', primaryEmotion: 'calm', valence: 2, arousal: 1, energy: 2, clarity: 4, sociality: 1 },
-  { id: 'energized', label: 'Energized', primaryEmotion: 'joy', valence: 4, arousal: 4, energy: 5, clarity: 3, sociality: 3 },
-  { id: 'stretched', label: 'Stretched', primaryEmotion: 'anxiety', valence: -2, arousal: 4, energy: 2, clarity: 1, sociality: -2 },
-  { id: 'friction', label: 'Friction', primaryEmotion: 'anger', valence: -3, arousal: 4, energy: 4, clarity: 2, sociality: -3 },
-  { id: 'fatigued', label: 'Fatigued', primaryEmotion: 'fatigue', valence: -1, arousal: 1, energy: 0, clarity: 1, sociality: -1 },
-] as const;
-
-const NARRATIVE_CHOICES = [
-  { id: 'steady-progress', label: 'Steady progress', atoms: ['setup', 'rising_action'], role: 'protagonist' as const, conflictLevel: 1, agencyLevel: 4, closureLevel: 3 },
-  { id: 'pivot-day', label: 'Pivot day', atoms: ['turning_point', 'climax'], role: 'protagonist' as const, conflictLevel: 3, agencyLevel: 4, closureLevel: 2 },
-  { id: 'heavy-loop', label: 'Heavy loop', atoms: ['complication', 'stasis'], role: 'observer' as const, conflictLevel: 4, agencyLevel: 1, closureLevel: 0 },
-  { id: 'repair-arc', label: 'Repair arc', atoms: ['falling_action', 'resolution'], role: 'support' as const, conflictLevel: 2, agencyLevel: 3, closureLevel: 4 },
-  { id: 'open-thread', label: 'Open thread', atoms: ['beginning', 'echo'], role: 'observer' as const, conflictLevel: 2, agencyLevel: 2, closureLevel: 1 },
-] as const;
-
 const emotionState = (entry?: GeomodeEntry) => ({
   primaryEmotion: entry?.emotion.primaryEmotion ?? 'calm',
   secondaryEmotions: entry?.emotion.secondaryEmotions ?? [],
@@ -46,15 +30,19 @@ const narrativeState = (entry?: GeomodeEntry) => ({
 
 const detectEmotionChoice = (entry?: GeomodeEntry) => {
   const active = emotionState(entry);
-  const match = EMOTION_CHOICES.find((choice) => choice.primaryEmotion === active.primaryEmotion && choice.valence === active.valence && choice.arousal === active.arousal && choice.energy === active.energy);
-  return match?.id ?? 'grounded';
+  return PRIMARY_EMOTIONS.includes(active.primaryEmotion) ? active.primaryEmotion : 'calm';
 };
 
 const detectNarrativeChoice = (entry?: GeomodeEntry) => {
   const active = narrativeState(entry);
-  const match = NARRATIVE_CHOICES.find((choice) => choice.role === active.role && choice.atoms.every((atom) => active.atoms.includes(atom as typeof NARRATIVE_ATOMS[number])));
-  return match?.id ?? 'steady-progress';
+  const firstAtom = active.atoms[0];
+  return firstAtom && NARRATIVE_ATOMS.includes(firstAtom) ? firstAtom : 'beginning';
 };
+
+const formatLabel = (value: string) => value
+  .split('_')
+  .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+  .join(' ');
 
 export const LogScreen = () => {
   const { entries, upsertEntry } = useGeomodeStore();
@@ -80,45 +68,34 @@ export const LogScreen = () => {
           <h3>Emotion input</h3>
           <label>Emotion (multiple choice)
             <select value={activeEmotionChoice} onChange={(event) => {
-              const choice = EMOTION_CHOICES.find((item) => item.id === event.target.value);
-              if (!choice) return;
-              const primaryEmotion = PRIMARY_EMOTIONS.includes(choice.primaryEmotion as typeof PRIMARY_EMOTIONS[number])
-                ? choice.primaryEmotion as typeof PRIMARY_EMOTIONS[number]
+              const primaryEmotion = PRIMARY_EMOTIONS.includes(event.target.value as typeof PRIMARY_EMOTIONS[number])
+                ? event.target.value as typeof PRIMARY_EMOTIONS[number]
                 : 'calm';
               upsertEntry(date, {
                 emotion: {
                   ...emotionState(active),
                   primaryEmotion,
-                  secondaryEmotions: [],
-                  valence: choice.valence,
-                  arousal: choice.arousal,
-                  energy: choice.energy,
-                  clarity: choice.clarity,
-                  sociality: choice.sociality,
                 },
               });
             }}>
-              {EMOTION_CHOICES.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}</option>)}
+              {PRIMARY_EMOTIONS.map((emotion) => <option key={emotion} value={emotion}>{formatLabel(emotion)}</option>)}
             </select>
           </label>
 
           <h3>Narrative input</h3>
           <label>Narrative (multiple choice)
             <select value={activeNarrativeChoice} onChange={(event) => {
-              const choice = NARRATIVE_CHOICES.find((item) => item.id === event.target.value);
-              if (!choice) return;
+              const selectedAtom = NARRATIVE_ATOMS.includes(event.target.value as typeof NARRATIVE_ATOMS[number])
+                ? event.target.value as typeof NARRATIVE_ATOMS[number]
+                : 'beginning';
               upsertEntry(date, {
                 narrative: {
                   ...narrativeState(active),
-                  atoms: [...choice.atoms] as Array<typeof NARRATIVE_ATOMS[number]>,
-                  role: choice.role,
-                  conflictLevel: choice.conflictLevel,
-                  agencyLevel: choice.agencyLevel,
-                  closureLevel: choice.closureLevel,
+                  atoms: [selectedAtom],
                 },
               });
             }}>
-              {NARRATIVE_CHOICES.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}</option>)}
+              {NARRATIVE_ATOMS.map((atom) => <option key={atom} value={atom}>{formatLabel(atom)}</option>)}
             </select>
           </label>
 
