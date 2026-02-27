@@ -3,7 +3,7 @@ import type { Dataset } from '../../types/models';
 const escapeCsv = (value: unknown): string => {
   const raw = value === null || value === undefined ? '' : String(value);
   if (raw.includes(',') || raw.includes('"') || raw.includes('\n')) {
-    return `"${raw.replaceAll('"', '""')}"`;
+    return `"${raw.replace(/"/g, '""')}"`;
   }
   return raw;
 };
