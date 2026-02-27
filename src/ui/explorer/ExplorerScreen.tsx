@@ -15,6 +15,10 @@ const SHAPES = [
   { id: 'torus', label: 'Torus' },
   { id: 'grid', label: 'Grid' },
   { id: 'wave', label: 'Wave' },
+  { id: 'lissajous', label: 'Lissajous' },
+  { id: 'epicycloid', label: 'Epicycloid' },
+  { id: 'poincare', label: 'Poincaré Disk' },
+  { id: 'hyperboloid', label: 'Hyperboloid' },
 ] as const;
 
 const inPolygon = (x: number, y: number, polygon: Array<{ x: number; y: number }>) => {
@@ -66,6 +70,41 @@ const shapeProjection = (shapeId: string, points: EmbeddedPoint[], control: numb
       }
       case 'wave':
         return { ...point, x: t * 12 - 6, y: Math.sin(theta) * (1.2 + control * 0.2) };
+      case 'lissajous': {
+        const a = 3 + Math.round(control);
+        const b = 2 + Math.round(control * 1.6);
+        const delta = Math.PI / (2.4 + control * 0.4);
+        return {
+          ...point,
+          x: Math.sin(a * theta + delta) * (1.8 + control * 0.25),
+          y: Math.sin(b * theta) * (1.8 + control * 0.25),
+        };
+      }
+      case 'epicycloid': {
+        const k = 3 + Math.round(control * 1.2);
+        const r = 0.55 + control * 0.1;
+        const R = r * k;
+        const phi = theta * 0.65;
+        const x = (R + r) * Math.cos(phi) - r * Math.cos(((R + r) / r) * phi);
+        const y = (R + r) * Math.sin(phi) - r * Math.sin(((R + r) / r) * phi);
+        return { ...point, x: x * 0.45, y: y * 0.45 };
+      }
+      case 'poincare': {
+        const radial = Math.tanh(t * (2.1 + control * 0.35));
+        const angle = theta * (1.4 + control * 0.15) + Math.sin(theta * 0.35) * 0.3;
+        return { ...point, x: radial * Math.cos(angle) * 2.4, y: radial * Math.sin(angle) * 2.4 };
+      }
+      case 'hyperboloid': {
+        const v = t * 2.2 - 1.1;
+        const cosh = (Math.exp(v) + Math.exp(-v)) / 2;
+        const sinh = (Math.exp(v) - Math.exp(-v)) / 2;
+        const tube = 0.4 + cosh * (0.3 + control * 0.03);
+        return {
+          ...point,
+          x: Math.cos(theta * 0.75) * tube,
+          y: sinh * 1.55,
+        };
+      }
       default:
         return point;
     }
