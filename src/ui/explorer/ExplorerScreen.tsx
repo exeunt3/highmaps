@@ -44,32 +44,47 @@ const shapeProjection = (shapeId: string, points: EmbeddedPoint[], control: numb
 
     switch (shapeId) {
       case 'line':
-        return { ...point, x: t * 10 - 5, y: 0 };
+        return { ...point, x: t * 10 - 5, y: 0, z: Math.sin(theta * 0.35) * 0.8 };
       case 'circle':
-        return { ...point, x: Math.cos(theta) * scale, y: Math.sin(theta) * scale };
+        return { ...point, x: Math.cos(theta) * scale, y: Math.sin(theta) * scale, z: Math.sin(theta * 1.4) * 1.1 };
       case 'spiral': {
         const r = 0.3 + t * 2.4 * scale;
-        return { ...point, x: Math.cos(theta) * r, y: Math.sin(theta) * r };
+        return { ...point, x: Math.cos(theta) * r, y: Math.sin(theta) * r, z: t * 5 - 2.5 };
       }
       case 'helix':
-        return { ...point, x: Math.cos(theta) * scale, y: t * 5 - 2.5 + Math.sin(theta * 0.4) * 0.6 };
+        return { ...point, x: Math.cos(theta) * scale, y: t * 5 - 2.5 + Math.sin(theta * 0.4) * 0.6, z: Math.sin(theta) * scale * 1.4 };
       case 'sphere': {
         const phi = Math.PI * t;
-        return { ...point, x: Math.cos(theta) * Math.sin(phi) * 2, y: Math.cos(phi) * 2 };
+        return {
+          ...point,
+          x: Math.cos(theta) * Math.sin(phi) * 2,
+          y: Math.cos(phi) * 2,
+          z: Math.sin(theta) * Math.sin(phi) * 2,
+        };
       }
       case 'torus': {
         const phi = (Math.PI * 2 * i) / Math.max(points.length, 1);
         const ring = 1.4 + 0.65 * Math.cos(theta * 0.8);
-        return { ...point, x: ring * Math.cos(phi), y: ring * Math.sin(phi) };
+        return { ...point, x: ring * Math.cos(phi), y: ring * Math.sin(phi), z: Math.sin(theta * 0.8) * 1.6 };
       }
       case 'grid': {
         const cols = Math.max(3, Math.round(8 + control * 2));
         const row = Math.floor(i / cols);
         const col = i % cols;
-        return { ...point, x: col - cols / 2, y: row * 0.75 - 4 };
+        return {
+          ...point,
+          x: col - cols / 2,
+          y: row * 0.75 - 4,
+          z: Math.sin(col * 0.7) * 0.8 + Math.cos(row * 0.6) * 0.8,
+        };
       }
       case 'wave':
-        return { ...point, x: t * 12 - 6, y: Math.sin(theta) * (1.2 + control * 0.2) };
+        return {
+          ...point,
+          x: t * 12 - 6,
+          y: Math.sin(theta) * (1.2 + control * 0.2),
+          z: Math.cos(theta * 0.55) * (1.4 + control * 0.15),
+        };
       case 'lissajous': {
         const a = 3 + Math.round(control);
         const b = 2 + Math.round(control * 1.6);
@@ -78,6 +93,7 @@ const shapeProjection = (shapeId: string, points: EmbeddedPoint[], control: numb
           ...point,
           x: Math.sin(a * theta + delta) * (1.8 + control * 0.25),
           y: Math.sin(b * theta) * (1.8 + control * 0.25),
+          z: Math.sin((a + b) * theta * 0.35) * 2,
         };
       }
       case 'epicycloid': {
@@ -87,12 +103,17 @@ const shapeProjection = (shapeId: string, points: EmbeddedPoint[], control: numb
         const phi = theta * 0.65;
         const x = (R + r) * Math.cos(phi) - r * Math.cos(((R + r) / r) * phi);
         const y = (R + r) * Math.sin(phi) - r * Math.sin(((R + r) / r) * phi);
-        return { ...point, x: x * 0.45, y: y * 0.45 };
+        return { ...point, x: x * 0.45, y: y * 0.45, z: Math.cos(phi * 1.6) * 1.8 };
       }
       case 'poincare': {
         const radial = Math.tanh(t * (2.1 + control * 0.35));
         const angle = theta * (1.4 + control * 0.15) + Math.sin(theta * 0.35) * 0.3;
-        return { ...point, x: radial * Math.cos(angle) * 2.4, y: radial * Math.sin(angle) * 2.4 };
+        return {
+          ...point,
+          x: radial * Math.cos(angle) * 2.4,
+          y: radial * Math.sin(angle) * 2.4,
+          z: (1 - radial * radial) * 2.2 - 1,
+        };
       }
       case 'hyperboloid': {
         const v = t * 2.2 - 1.1;
@@ -103,6 +124,7 @@ const shapeProjection = (shapeId: string, points: EmbeddedPoint[], control: numb
           ...point,
           x: Math.cos(theta * 0.75) * tube,
           y: sinh * 1.55,
+          z: Math.sin(theta * 0.75) * tube,
         };
       }
       default:
