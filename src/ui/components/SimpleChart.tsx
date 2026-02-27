@@ -59,6 +59,7 @@ export const SimpleChart = ({
   const projected = projectPoints(points, width, height);
   const depthSorted = [...projected].sort((a, b) => a.depth - b.depth);
   const d = projected.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.px} ${p.py}`).join(' ');
+  const hasBothSeries = points.some((point) => point.id.includes('|emotion')) && points.some((point) => point.id.includes('|narrative'));
 
   return (
     <svg className="chart-svg" width={width} height={height} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
@@ -70,12 +71,16 @@ export const SimpleChart = ({
       </defs>
       <rect x={0} y={0} width={width} height={height} fill="url(#chartGlow)" />
       <path d={d} fill="none" stroke="rgba(56, 189, 248, 0.35)" strokeWidth={1.1} strokeLinecap="round" />
+      {hasBothSeries && <text x={18} y={26} fill="#7dd3fc" fontSize={12}>Emotion points</text>}
+      {hasBothSeries && <text x={18} y={44} fill="#f0abfc" fontSize={12}>Narrative points</text>}
       {depthSorted.map((p) => {
         const selected = highlightIds?.has(p.id);
         const radius = selected ? 5.2 : 2 + p.depth * 2.4;
         const fill = selected
           ? '#fde047'
-          : `rgba(${Math.round(140 + p.depth * 80)}, ${Math.round(210 + p.depth * 30)}, ${Math.round(255 - p.depth * 35)}, ${0.5 + p.depth * 0.45})`;
+          : p.id.includes('|narrative')
+            ? `rgba(${Math.round(240 - p.depth * 20)}, ${Math.round(130 + p.depth * 30)}, ${Math.round(230 + p.depth * 20)}, ${0.5 + p.depth * 0.45})`
+            : `rgba(${Math.round(140 + p.depth * 80)}, ${Math.round(210 + p.depth * 30)}, ${Math.round(255 - p.depth * 35)}, ${0.5 + p.depth * 0.45})`;
         return (
           <g key={p.id} style={{ opacity: selected ? 1 : 0.58 + p.depth * 0.4 }}>
             <circle cx={p.px} cy={p.py} r={radius + p.glow * 2.5} fill="rgba(56, 189, 248, 0.12)" />
