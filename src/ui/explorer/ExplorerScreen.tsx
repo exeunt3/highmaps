@@ -108,6 +108,20 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
       const perspective4d = 1 / (2.4 - w * 0.75);
       return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
     }
+    case 'tesseract-projection': {
+      const corners = [
+        [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
+        [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
+        [-1, -1, -1, 1], [1, -1, -1, 1], [-1, 1, -1, 1], [1, 1, -1, 1],
+        [-1, -1, 1, 1], [1, -1, 1, 1], [-1, 1, 1, 1], [1, 1, 1, 1],
+      ] as const;
+      const idx = Math.floor(t * corners.length) % corners.length;
+      const [x, y, z, w] = corners[idx];
+      const perspective4d = 1 / (2.4 - w * 0.75);
+      return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
+    }
+    default:
+      return { ...point, x: point.x, y: point.y, z: point.z ?? 0 };
   }
 });
 
