@@ -4,6 +4,21 @@ import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
 const SHAPES = ['sphere', 'hypersphere', 'tesseract', 'simplex4'] as const;
+const GEOMETRY_MODELS = [
+  'Line',
+  'Circle',
+  'Spiral',
+  'Wave',
+  'Grid',
+  'Helix',
+  'Cylinder',
+  'Sphere',
+  'Torus',
+  'Möbius',
+  'Hyperbolic Disk',
+  'Hypersphere Projection',
+  'Tesseract Projection',
+] as const;
 type ShapeId = (typeof SHAPES)[number];
 type GraphLayer = 'emotion' | 'narrative' | 'both';
 
@@ -122,12 +137,41 @@ const fitError = (points: Array<{ x: number; y: number }>, model: string) => {
   switch (model) {
     case 'Line':
       return points.reduce((acc, p, i) => acc + Math.abs(p.y - (points[0].y + (yTrend / points.length) * i)), 0) / points.length;
-    case 'Cycle':
+    case 'Circle':
       return radii.reduce((acc, r) => acc + Math.abs(r - avgR), 0) / points.length;
     case 'Spiral':
       return points.reduce((acc, p, i) => acc + Math.abs(Math.hypot(p.x - centerX, p.y - centerY) - (i / points.length) * avgR * 1.8), 0) / points.length;
+    case 'Wave':
+      return points.reduce((acc, p, i) => acc + Math.abs(p.y - (centerY + Math.sin((i / points.length) * Math.PI * 3) * avgR * 0.55)), 0) / points.length;
+    case 'Grid':
+      return points.reduce((acc, p) => {
+        const nearX = Math.abs(p.x - Math.round(p.x / (avgR * 0.35 || 1)) * (avgR * 0.35 || 1));
+        const nearY = Math.abs(p.y - Math.round(p.y / (avgR * 0.35 || 1)) * (avgR * 0.35 || 1));
+        return acc + Math.min(nearX, nearY);
+      }, 0) / points.length;
     case 'Helix':
       return points.reduce((acc, p) => acc + Math.abs(Math.abs(p.x - centerX) - avgR), 0) / points.length;
+    case 'Cylinder':
+      return points.reduce((acc, p) => acc + Math.abs(Math.abs(p.x - centerX) - avgR * 0.75), 0) / points.length;
+    case 'Sphere':
+      return radii.reduce((acc, r) => acc + Math.abs(r - avgR * 0.9), 0) / points.length;
+    case 'Torus':
+      return points.reduce((acc, p) => {
+        const r = Math.hypot(p.x - centerX, p.y - centerY);
+        return acc + Math.min(Math.abs(r - avgR * 0.65), Math.abs(r - avgR * 1.1));
+      }, 0) / points.length;
+    case 'Möbius':
+      return points.reduce((acc, p, i) => acc + Math.abs((p.y - centerY) - Math.sin((i / points.length) * Math.PI * 2) * (p.x - centerX) * 0.25), 0) / points.length;
+    case 'Hyperbolic Disk':
+      return points.reduce((acc, p) => acc + Math.abs(Math.hypot(p.x - centerX, p.y - centerY) - avgR * 0.6) * 0.6, 0) / points.length;
+    case 'Hypersphere Projection':
+      return radii.reduce((acc, r) => acc + Math.abs(r - avgR * 0.82), 0) / points.length;
+    case 'Tesseract Projection':
+      return points.reduce((acc, p) => {
+        const dx = Math.abs(p.x - centerX);
+        const dy = Math.abs(p.y - centerY);
+        return acc + Math.abs(Math.max(dx, dy) - avgR * 0.95);
+      }, 0) / points.length;
     default:
       return 999;
   }
@@ -150,15 +194,14 @@ export const ExplorerScreen = () => {
   }, [entries, graphLayer]);
 
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints), [shapeId, basePoints]);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1300, 650, rotation), [shapedPoints, rotation]);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1560, 860, rotation), [shapedPoints, rotation]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
     const projected = chartPoints.map((p) => ({ x: p.px, y: p.py }));
-    const models = ['Line', 'Cycle', 'Spiral', 'Helix'];
-    return models.map((model) => {
+    return GEOMETRY_MODELS.map((model) => {
       const error = fitError(projected, model);
-      return { model, confidence: Math.round(clamp(100 - error * 8, 8, 98)) };
+      return { model, confidence: Math.round(clamp(100 - error * 7.5, 8, 98)) };
     }).sort((a, b) => b.confidence - a.confidence);
   }, [chartPoints]);
 
@@ -264,8 +307,8 @@ export const ExplorerScreen = () => {
 
           {entries.length > 0 ? (
             <SimpleChart
-              width={1300}
-              height={650}
+              width={1560}
+              height={860}
               points={shapedPoints}
               highlightIds={selectedIds}
               selectionBox={selectionBox}
