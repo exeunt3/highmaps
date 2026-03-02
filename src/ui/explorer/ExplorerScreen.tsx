@@ -242,10 +242,10 @@ export const ExplorerScreen = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
-  const [rotation, setRotation] = useState({ yaw: 0.4, pitch: -0.3, roll: 0 });
-  const [zoom, setZoom] = useState(1.2);
+  const [rotation, setRotation] = useState({ yaw: 0, pitch: 0, roll: 0 });
+  const [zoom, setZoom] = useState(1);
   const [rotating, setRotating] = useState<{ x: number; y: number }>();
-  const [autoSpin, setAutoSpin] = useState(true);
+  const [autoSpin, setAutoSpin] = useState(false);
 
   const basePoints = useMemo(() => {
     if (entries.length === 0) return toDemoPoints();
@@ -359,7 +359,7 @@ export const ExplorerScreen = () => {
             <span className="hint">Shift+drag/middle-drag = rotate 3D · Click nodes = toggle highlight · Drag box = range highlight</span>
           </div>
           <label>Zoom
-            <input type="range" min={1} max={2.4} step={0.05} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+            <input type="range" min={0.75} max={2.4} step={0.05} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
           </label>
           <label>Graph layer
             <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
