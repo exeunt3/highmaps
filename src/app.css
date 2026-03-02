@@ -31,7 +31,7 @@ button.active, button.selected { border-color: rgba(240, 240, 240, 0.75); backgr
 .mode-tabs { display: flex; gap: 8px; }
 .content-grid {
   display: grid;
-  grid-template-columns: 320px 1fr 320px;
+  grid-template-columns: 260px 1fr 260px;
   gap: 12px;
   padding: 12px;
 }
@@ -54,6 +54,7 @@ button.active, button.selected { border-color: rgba(240, 240, 240, 0.75); backgr
   display: grid;
   align-content: start;
   gap: 8px;
+  min-height: calc(100vh - 128px);
 }
 .panel-block { display: grid; gap: 8px; margin-top: 10px; }
 label { display: grid; gap: 4px; font-size: 13px; color: #d8d5d1; }

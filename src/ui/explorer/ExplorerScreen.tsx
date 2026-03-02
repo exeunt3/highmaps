@@ -38,24 +38,65 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
   const phi = t * Math.PI;
 
   switch (shapeId) {
+    case 'line':
+      return { ...point, x: t * 5 - 2.5, y: 0, z: 0 };
+    case 'circle':
+      return { ...point, x: Math.cos(theta) * 2.2, y: Math.sin(theta) * 2.2, z: 0 };
+    case 'spiral': {
+      const radius = 0.35 + t * 2.2;
+      return { ...point, x: Math.cos(theta * 2.2) * radius, y: Math.sin(theta * 2.2) * radius, z: t * 1.8 - 0.9 };
+    }
+    case 'wave':
+      return { ...point, x: t * 5 - 2.5, y: Math.sin(theta * 2) * 1.8, z: Math.cos(theta * 2) * 0.6 };
+    case 'grid': {
+      const columns = Math.max(3, Math.round(Math.sqrt(points.length)));
+      const row = Math.floor(i / columns);
+      const col = i % columns;
+      return { ...point, x: (col / Math.max(1, columns - 1)) * 4 - 2, y: (row / Math.max(1, columns - 1)) * 4 - 2, z: 0 };
+    }
+    case 'helix':
+      return { ...point, x: Math.cos(theta * 2) * 1.6, y: t * 4 - 2, z: Math.sin(theta * 2) * 1.6 };
+    case 'cylinder': {
+      const y = t * 4 - 2;
+      return { ...point, x: Math.cos(theta * 3) * 1.7, y, z: Math.sin(theta * 3) * 1.7 };
+    }
     case 'sphere':
       return {
         ...point,
-        x: Math.cos(theta) * Math.sin(phi) * 2.3,
-        y: Math.cos(phi) * 2.3,
-        z: Math.sin(theta) * Math.sin(phi) * 2.3,
+        x: Math.cos(theta) * Math.sin(phi) * 2.2,
+        y: Math.cos(phi) * 2.2,
+        z: Math.sin(theta) * Math.sin(phi) * 2.2,
       };
-    case 'hypersphere': {
+    case 'torus': {
+      const minor = Math.sin(t * Math.PI * 6) * 0.55;
+      const major = 1.6 + minor;
+      return { ...point, x: Math.cos(theta) * major, y: Math.sin(t * Math.PI * 6) * 0.9, z: Math.sin(theta) * major };
+    }
+    case 'mobius': {
+      const u = theta;
+      const v = Math.sin(t * Math.PI * 4) * 0.9;
+      return {
+        ...point,
+        x: (1.8 + (v / 2) * Math.cos(u / 2)) * Math.cos(u),
+        y: (1.8 + (v / 2) * Math.cos(u / 2)) * Math.sin(u),
+        z: (v / 2) * Math.sin(u / 2) * 2,
+      };
+    }
+    case 'hyperbolic-disk': {
+      const r = Math.tanh(t * 1.6) * 2.2;
+      return { ...point, x: Math.cos(theta * 2.4) * r, y: Math.sin(theta * 2.4) * r, z: Math.sin(theta * 1.2) * 0.3 };
+    }
+    case 'hypersphere-projection': {
       const chi = t * Math.PI * 1.5;
       const w = Math.cos(chi);
       return {
         ...point,
-        x: Math.cos(theta) * Math.sin(phi) * (1.4 + w),
-        y: Math.sin(theta) * Math.sin(phi) * (1.4 + w),
-        z: Math.cos(phi) * (1.4 + w),
+        x: Math.cos(theta) * Math.sin(phi) * (1.3 + w),
+        y: Math.sin(theta) * Math.sin(phi) * (1.3 + w),
+        z: Math.cos(phi) * (1.3 + w),
       };
     }
-    case 'tesseract': {
+    case 'tesseract-projection': {
       const corners = [
         [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
         [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
@@ -65,30 +106,7 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
       const idx = Math.floor(t * corners.length) % corners.length;
       const [x, y, z, w] = corners[idx];
       const perspective4d = 1 / (2.4 - w * 0.75);
-      return {
-        ...point,
-        x: x * perspective4d * 3,
-        y: y * perspective4d * 3,
-        z: z * perspective4d * 3,
-      };
-    }
-    case 'simplex4': {
-      const verts = [
-        [1, 1, 1, -1 / Math.sqrt(5)],
-        [1, -1, -1, -1 / Math.sqrt(5)],
-        [-1, 1, -1, -1 / Math.sqrt(5)],
-        [-1, -1, 1, -1 / Math.sqrt(5)],
-        [0, 0, 0, 4 / Math.sqrt(5)],
-      ] as const;
-      const idx = Math.floor(t * verts.length) % verts.length;
-      const [x, y, z, w] = verts[idx];
-      const perspective4d = 1 / (2.2 - w * 0.65);
-      return {
-        ...point,
-        x: x * perspective4d * 3,
-        y: y * perspective4d * 3,
-        z: z * perspective4d * 3,
-      };
+      return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
     }
   }
 });
@@ -179,7 +197,7 @@ const fitError = (points: Array<{ x: number; y: number }>, model: string) => {
 
 export const ExplorerScreen = () => {
   const { entries, intentions, addIntention, removeIntention } = useGeomodeStore();
-  const [shapeId, setShapeId] = useState<ShapeId>('sphere');
+  const [shapeId, setShapeId] = useState<ShapeId>('line');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
@@ -291,12 +309,15 @@ export const ExplorerScreen = () => {
 
         <section className="center-panel">
           <div className="shape-strip inline">
-            {SHAPES.map((shape) => (
-              <button key={shape} className={shapeId === shape ? 'selected' : ''} onClick={() => setShapeId(shape)}>{shape}</button>
+            {SHAPE_OPTIONS.map((shape) => (
+              <button key={shape.id} className={shapeId === shape.id ? 'selected' : ''} onClick={() => setShapeId(shape.id)}>{shape.label}</button>
             ))}
             <button onClick={() => setAutoSpin((prev) => !prev)}>{autoSpin ? 'Pause spin' : 'Auto spin'}</button>
             <span className="hint">Shift+drag/middle-drag = rotate 3D · Click nodes = toggle highlight · Drag box = range highlight</span>
           </div>
+          <label>Zoom
+            <input type="range" min={1} max={2.4} step={0.05} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+          </label>
           <label>Graph layer
             <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
               <option value="emotion">Emotion only</option>

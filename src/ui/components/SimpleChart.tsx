@@ -20,6 +20,7 @@ interface Props {
   onPointerUp?: PointerEventHandler<SVGSVGElement>;
   onPointClick?: (id: string) => void;
   rotation?: { yaw: number; pitch: number; roll?: number };
+  zoom?: number;
 }
 
 const rotatePoint = (
@@ -51,6 +52,7 @@ export const projectPoints = (
   width: number,
   height: number,
   rotation: { yaw: number; pitch: number; roll?: number } = { yaw: 0, pitch: 0, roll: 0 },
+  zoom = 1,
 ): ViewPoint[] => {
   const rotated = points.map((point) => rotatePoint(point, rotation));
   const xs = rotated.map((p) => p.x);
@@ -86,7 +88,7 @@ export const projectPoints = (
   const availableH = height * 0.9;
   const spanX = Math.max(1, maxPx - minPx);
   const spanY = Math.max(1, maxPy - minPy);
-  const fitScale = Math.min(availableW / spanX, availableH / spanY, 1.2);
+  const fitScale = Math.min(availableW / spanX, availableH / spanY, 1.1) * zoom;
   const centerPx = (minPx + maxPx) / 2;
   const centerPy = (minPy + maxPy) / 2;
 
@@ -109,9 +111,10 @@ export const SimpleChart = ({
   onPointerUp,
   onPointClick,
   rotation,
+  zoom = 1,
 }: Props) => {
   if (points.length === 0) return <div className="empty-state">Paste CSV to begin.</div>;
-  const projected = projectPoints(points, width, height, rotation);
+  const projected = projectPoints(points, width, height, rotation, zoom);
   const depthSorted = [...projected].sort((a, b) => a.depth - b.depth);
   const d = projected.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.px} ${p.py}`).join(' ');
   const hasBothSeries = points.some((point) => point.id.includes('|emotion')) && points.some((point) => point.id.includes('|narrative'));
