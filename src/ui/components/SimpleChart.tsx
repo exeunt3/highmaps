@@ -120,31 +120,32 @@ export const SimpleChart = ({
     <svg className="chart-svg" width={width} height={height} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onContextMenu={(event) => event.preventDefault()}>
       <defs>
         <radialGradient id="chartGlow" cx="50%" cy="45%" r="70%">
-          <stop offset="0%" stopColor="rgba(56, 189, 248, 0.15)" />
-          <stop offset="100%" stopColor="rgba(2, 6, 23, 0)" />
+          <stop offset="0%" stopColor="rgba(0, 0, 0, 0.06)" />
+          <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
         </radialGradient>
       </defs>
+      <rect x={0} y={0} width={width} height={height} fill="#f7f6f2" />
       <rect x={0} y={0} width={width} height={height} fill="url(#chartGlow)" />
-      <path d={d} fill="none" stroke="rgba(56, 189, 248, 0.35)" strokeWidth={1.1} strokeLinecap="round" />
-      {hasBothSeries && <text x={18} y={26} fill="#7dd3fc" fontSize={12}>Emotion points</text>}
-      {hasBothSeries && <text x={18} y={44} fill="#f0abfc" fontSize={12}>Narrative points</text>}
+      <path d={d} fill="none" stroke="rgba(20, 20, 20, 0.28)" strokeWidth={1.1} strokeLinecap="round" />
+      {hasBothSeries && <text x={18} y={26} fill="#2b2b2b" fontSize={12}>Emotion points</text>}
+      {hasBothSeries && <text x={18} y={44} fill="#5a5a5a" fontSize={12}>Narrative points</text>}
       {depthSorted.map((p) => {
         const selected = highlightIds?.has(p.id);
         const radius = selected ? 5.2 : 2 + p.depth * 2.4;
         const fill = selected
-          ? '#fde047'
+          ? '#050505'
           : p.id.includes('|narrative')
-            ? `rgba(${Math.round(240 - p.depth * 20)}, ${Math.round(130 + p.depth * 30)}, ${Math.round(230 + p.depth * 20)}, ${0.5 + p.depth * 0.45})`
-            : `rgba(${Math.round(140 + p.depth * 80)}, ${Math.round(210 + p.depth * 30)}, ${Math.round(255 - p.depth * 35)}, ${0.5 + p.depth * 0.45})`;
+            ? `rgba(${Math.round(30 + p.depth * 55)}, ${Math.round(30 + p.depth * 55)}, ${Math.round(30 + p.depth * 55)}, ${0.45 + p.depth * 0.4})`
+            : `rgba(${Math.round(70 + p.depth * 60)}, ${Math.round(70 + p.depth * 60)}, ${Math.round(70 + p.depth * 60)}, ${0.45 + p.depth * 0.4})`;
         return (
           <g key={p.id} style={{ opacity: selected ? 1 : 0.58 + p.depth * 0.4 }}>
-            <circle cx={p.px} cy={p.py} r={radius + p.glow * 2.5} fill="rgba(56, 189, 248, 0.12)" />
+            <circle cx={p.px} cy={p.py} r={radius + p.glow * 2.5} fill="rgba(0, 0, 0, 0.08)" />
             <circle
               cx={p.px}
               cy={p.py}
               r={radius}
               fill={fill}
-              stroke={selected ? 'rgba(254, 249, 195, 0.9)' : `rgba(186, 230, 253, ${0.35 + p.depth * 0.4})`}
+              stroke={selected ? 'rgba(255, 255, 255, 0.92)' : `rgba(15, 15, 15, ${0.3 + p.depth * 0.4})`}
               strokeWidth={selected ? 1.4 : 0.8}
               className={selected ? 'selected-point' : ''}
               onClick={() => onPointClick?.(p.id)}
@@ -158,16 +159,16 @@ export const SimpleChart = ({
           y={Math.min(selectionBox.y, selectionBox.y + selectionBox.h)}
           width={Math.abs(selectionBox.w)}
           height={Math.abs(selectionBox.h)}
-          fill="rgba(56, 189, 248, 0.08)"
-          stroke="rgba(125, 211, 252, 0.75)"
+          fill="rgba(0, 0, 0, 0.06)"
+          stroke="rgba(0, 0, 0, 0.58)"
           strokeDasharray="6 4"
         />
       )}
       {lassoPath && lassoPath.length > 2 && (
         <path
           d={lassoPath.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z'}
-          fill="rgba(74, 222, 128, 0.08)"
-          stroke="rgba(74, 222, 128, 0.8)"
+          fill="rgba(0, 0, 0, 0.08)"
+          stroke="rgba(35, 35, 35, 0.75)"
           strokeDasharray="4 4"
         />
       )}
