@@ -4,23 +4,22 @@ import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
 const SHAPES = ['sphere', 'hypersphere', 'tesseract', 'simplex4'] as const;
-const SHAPE_OPTIONS = [
-  { id: 'line', label: 'Line' },
-  { id: 'circle', label: 'Circle' },
-  { id: 'spiral', label: 'Spiral' },
-  { id: 'wave', label: 'Wave' },
-  { id: 'grid', label: 'Grid' },
-  { id: 'helix', label: 'Helix' },
-  { id: 'cylinder', label: 'Cylinder' },
-  { id: 'sphere', label: 'Sphere' },
-  { id: 'torus', label: 'Torus' },
-  { id: 'mobius', label: 'Möbius' },
-  { id: 'hyperbolic-disk', label: 'Hyperbolic Disk' },
-  { id: 'hypersphere-projection', label: 'Hypersphere Projection' },
-  { id: 'tesseract-projection', label: 'Tesseract Projection' },
+const GEOMETRY_MODELS = [
+  'Line',
+  'Circle',
+  'Spiral',
+  'Wave',
+  'Grid',
+  'Helix',
+  'Cylinder',
+  'Sphere',
+  'Torus',
+  'Möbius',
+  'Hyperbolic Disk',
+  'Hypersphere Projection',
+  'Tesseract Projection',
 ] as const;
-const GEOMETRY_MODELS = SHAPE_OPTIONS.map((shape) => shape.label);
-type ShapeId = (typeof SHAPE_OPTIONS)[number]['id'] | (typeof SHAPES)[number];
+type ShapeId = (typeof SHAPES)[number];
 type GraphLayer = 'emotion' | 'narrative' | 'both';
 
 const INTENTIONS = [
@@ -97,17 +96,7 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
         z: Math.cos(phi) * (1.3 + w),
       };
     }
-    case 'hypersphere': {
-      const chi = t * Math.PI * 1.5;
-      const w = Math.cos(chi);
-      return {
-        ...point,
-        x: Math.cos(theta) * Math.sin(phi) * (1.4 + w),
-        y: Math.sin(theta) * Math.sin(phi) * (1.4 + w),
-        z: Math.cos(phi) * (1.4 + w),
-      };
-    }
-    case 'tesseract': {
+    case 'tesseract-projection': {
       const corners = [
         [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
         [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
@@ -117,19 +106,6 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
       const idx = Math.floor(t * corners.length) % corners.length;
       const [x, y, z, w] = corners[idx];
       const perspective4d = 1 / (2.4 - w * 0.75);
-      return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
-    }
-    case 'simplex4': {
-      const verts = [
-        [1, 1, 1, -1 / Math.sqrt(5)],
-        [1, -1, -1, -1 / Math.sqrt(5)],
-        [-1, 1, -1, -1 / Math.sqrt(5)],
-        [-1, -1, 1, -1 / Math.sqrt(5)],
-        [0, 0, 0, 4 / Math.sqrt(5)],
-      ] as const;
-      const idx = Math.floor(t * verts.length) % verts.length;
-      const [x, y, z, w] = verts[idx];
-      const perspective4d = 1 / (2.2 - w * 0.65);
       return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
     }
     case 'tesseract-projection': {
@@ -260,8 +236,7 @@ export const ExplorerScreen = () => {
   }, [entries, graphLayer]);
 
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints), [shapeId, basePoints]);
-  const [zoom, setZoom] = useState(1);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1880, 1120, rotation, zoom), [shapedPoints, rotation, zoom]);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1560, 860, rotation), [shapedPoints, rotation]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
@@ -375,27 +350,27 @@ export const ExplorerScreen = () => {
             </select>
           </label>
 
-          <SimpleChart
-            width={1880}
-            height={1120}
-            zoom={zoom}
-            points={shapedPoints}
-            highlightIds={selectedIds}
-            selectionBox={selectionBox}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointClick={(id) => {
-              setSelectedIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(id)) next.delete(id);
-                else next.add(id);
-                return next;
-              });
-            }}
-            rotation={rotation}
-          />
-          {entries.length === 0 && <p className="empty-state">Showing demo points. Add entries on the Daily log page to visualize your data.</p>}
+          {entries.length > 0 ? (
+            <SimpleChart
+              width={1560}
+              height={860}
+              points={shapedPoints}
+              highlightIds={selectedIds}
+              selectionBox={selectionBox}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointClick={(id) => {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                });
+              }}
+              rotation={rotation}
+            />
+          ) : <p className="empty-state">No logs yet. Add entries on the Daily log page first.</p>}
         </section>
 
         <aside className="right-panel">
