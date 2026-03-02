@@ -127,6 +127,15 @@ const toNarrativePoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.
   z: entry.narrative.closureLevel - 2,
 }));
 
+
+const toDemoPoints = (count = 84): EmbeddedPoint[] => Array.from({ length: count }, (_, index) => ({
+  id: `demo|${index}`,
+  index,
+  x: index,
+  y: Math.sin((index / count) * Math.PI * 2) * 2,
+  z: Math.cos((index / count) * Math.PI * 3) * 1.2,
+}));
+
 const computeSummary = (entries: GeomodeEntry[]) => {
   if (entries.length === 0) return [];
   const valences = entries.map((entry) => entry.emotion.valence);
@@ -206,6 +215,7 @@ export const ExplorerScreen = () => {
   const [autoSpin, setAutoSpin] = useState(true);
 
   const basePoints = useMemo(() => {
+    if (entries.length === 0) return toDemoPoints();
     if (graphLayer === 'emotion') return toEmotionPoints(entries);
     if (graphLayer === 'narrative') return toNarrativePoints(entries);
     return [...toEmotionPoints(entries), ...toNarrativePoints(entries)];
