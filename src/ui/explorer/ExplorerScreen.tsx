@@ -3,8 +3,23 @@ import type { EmbeddedPoint } from '../../types/models';
 import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
-const SHAPES = ['sphere', 'hypersphere', 'tesseract', 'simplex4'] as const;
-type ShapeId = (typeof SHAPES)[number];
+const SHAPE_OPTIONS = [
+  { id: 'line', label: 'Line' },
+  { id: 'circle', label: 'Circle' },
+  { id: 'spiral', label: 'Spiral' },
+  { id: 'wave', label: 'Wave' },
+  { id: 'grid', label: 'Grid' },
+  { id: 'helix', label: 'Helix' },
+  { id: 'cylinder', label: 'Cylinder' },
+  { id: 'sphere', label: 'Sphere' },
+  { id: 'torus', label: 'Torus' },
+  { id: 'mobius', label: 'Möbius' },
+  { id: 'hyperbolic-disk', label: 'Hyperbolic Disk' },
+  { id: 'hypersphere-projection', label: 'Hypersphere Projection' },
+  { id: 'tesseract-projection', label: 'Tesseract Projection' },
+] as const;
+const GEOMETRY_MODELS = SHAPE_OPTIONS.map((shape) => shape.label);
+type ShapeId = (typeof SHAPE_OPTIONS)[number]['id'];
 type GraphLayer = 'emotion' | 'narrative' | 'both';
 
 const INTENTIONS = [
@@ -23,24 +38,65 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
   const phi = t * Math.PI;
 
   switch (shapeId) {
+    case 'line':
+      return { ...point, x: t * 5 - 2.5, y: 0, z: 0 };
+    case 'circle':
+      return { ...point, x: Math.cos(theta) * 2.2, y: Math.sin(theta) * 2.2, z: 0 };
+    case 'spiral': {
+      const radius = 0.35 + t * 2.2;
+      return { ...point, x: Math.cos(theta * 2.2) * radius, y: Math.sin(theta * 2.2) * radius, z: t * 1.8 - 0.9 };
+    }
+    case 'wave':
+      return { ...point, x: t * 5 - 2.5, y: Math.sin(theta * 2) * 1.8, z: Math.cos(theta * 2) * 0.6 };
+    case 'grid': {
+      const columns = Math.max(3, Math.round(Math.sqrt(points.length)));
+      const row = Math.floor(i / columns);
+      const col = i % columns;
+      return { ...point, x: (col / Math.max(1, columns - 1)) * 4 - 2, y: (row / Math.max(1, columns - 1)) * 4 - 2, z: 0 };
+    }
+    case 'helix':
+      return { ...point, x: Math.cos(theta * 2) * 1.6, y: t * 4 - 2, z: Math.sin(theta * 2) * 1.6 };
+    case 'cylinder': {
+      const y = t * 4 - 2;
+      return { ...point, x: Math.cos(theta * 3) * 1.7, y, z: Math.sin(theta * 3) * 1.7 };
+    }
     case 'sphere':
       return {
         ...point,
-        x: Math.cos(theta) * Math.sin(phi) * 2.3,
-        y: Math.cos(phi) * 2.3,
-        z: Math.sin(theta) * Math.sin(phi) * 2.3,
+        x: Math.cos(theta) * Math.sin(phi) * 2.2,
+        y: Math.cos(phi) * 2.2,
+        z: Math.sin(theta) * Math.sin(phi) * 2.2,
       };
-    case 'hypersphere': {
+    case 'torus': {
+      const minor = Math.sin(t * Math.PI * 6) * 0.55;
+      const major = 1.6 + minor;
+      return { ...point, x: Math.cos(theta) * major, y: Math.sin(t * Math.PI * 6) * 0.9, z: Math.sin(theta) * major };
+    }
+    case 'mobius': {
+      const u = theta;
+      const v = Math.sin(t * Math.PI * 4) * 0.9;
+      return {
+        ...point,
+        x: (1.8 + (v / 2) * Math.cos(u / 2)) * Math.cos(u),
+        y: (1.8 + (v / 2) * Math.cos(u / 2)) * Math.sin(u),
+        z: (v / 2) * Math.sin(u / 2) * 2,
+      };
+    }
+    case 'hyperbolic-disk': {
+      const r = Math.tanh(t * 1.6) * 2.2;
+      return { ...point, x: Math.cos(theta * 2.4) * r, y: Math.sin(theta * 2.4) * r, z: Math.sin(theta * 1.2) * 0.3 };
+    }
+    case 'hypersphere-projection': {
       const chi = t * Math.PI * 1.5;
       const w = Math.cos(chi);
       return {
         ...point,
-        x: Math.cos(theta) * Math.sin(phi) * (1.4 + w),
-        y: Math.sin(theta) * Math.sin(phi) * (1.4 + w),
-        z: Math.cos(phi) * (1.4 + w),
+        x: Math.cos(theta) * Math.sin(phi) * (1.3 + w),
+        y: Math.sin(theta) * Math.sin(phi) * (1.3 + w),
+        z: Math.cos(phi) * (1.3 + w),
       };
     }
-    case 'tesseract': {
+    case 'tesseract-projection': {
       const corners = [
         [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
         [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
@@ -50,30 +106,7 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
       const idx = Math.floor(t * corners.length) % corners.length;
       const [x, y, z, w] = corners[idx];
       const perspective4d = 1 / (2.4 - w * 0.75);
-      return {
-        ...point,
-        x: x * perspective4d * 3,
-        y: y * perspective4d * 3,
-        z: z * perspective4d * 3,
-      };
-    }
-    case 'simplex4': {
-      const verts = [
-        [1, 1, 1, -1 / Math.sqrt(5)],
-        [1, -1, -1, -1 / Math.sqrt(5)],
-        [-1, 1, -1, -1 / Math.sqrt(5)],
-        [-1, -1, 1, -1 / Math.sqrt(5)],
-        [0, 0, 0, 4 / Math.sqrt(5)],
-      ] as const;
-      const idx = Math.floor(t * verts.length) % verts.length;
-      const [x, y, z, w] = verts[idx];
-      const perspective4d = 1 / (2.2 - w * 0.65);
-      return {
-        ...point,
-        x: x * perspective4d * 3,
-        y: y * perspective4d * 3,
-        z: z * perspective4d * 3,
-      };
+      return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
     }
   }
 });
@@ -92,6 +125,15 @@ const toNarrativePoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.
   x: index,
   y: entry.narrative.agencyLevel - entry.narrative.conflictLevel,
   z: entry.narrative.closureLevel - 2,
+}));
+
+
+const toDemoPoints = (count = 84): EmbeddedPoint[] => Array.from({ length: count }, (_, index) => ({
+  id: `demo|${index}`,
+  index,
+  x: index,
+  y: Math.sin((index / count) * Math.PI * 2) * 2,
+  z: Math.cos((index / count) * Math.PI * 3) * 1.2,
 }));
 
 const computeSummary = (entries: GeomodeEntry[]) => {
@@ -122,12 +164,41 @@ const fitError = (points: Array<{ x: number; y: number }>, model: string) => {
   switch (model) {
     case 'Line':
       return points.reduce((acc, p, i) => acc + Math.abs(p.y - (points[0].y + (yTrend / points.length) * i)), 0) / points.length;
-    case 'Cycle':
+    case 'Circle':
       return radii.reduce((acc, r) => acc + Math.abs(r - avgR), 0) / points.length;
     case 'Spiral':
       return points.reduce((acc, p, i) => acc + Math.abs(Math.hypot(p.x - centerX, p.y - centerY) - (i / points.length) * avgR * 1.8), 0) / points.length;
+    case 'Wave':
+      return points.reduce((acc, p, i) => acc + Math.abs(p.y - (centerY + Math.sin((i / points.length) * Math.PI * 3) * avgR * 0.55)), 0) / points.length;
+    case 'Grid':
+      return points.reduce((acc, p) => {
+        const nearX = Math.abs(p.x - Math.round(p.x / (avgR * 0.35 || 1)) * (avgR * 0.35 || 1));
+        const nearY = Math.abs(p.y - Math.round(p.y / (avgR * 0.35 || 1)) * (avgR * 0.35 || 1));
+        return acc + Math.min(nearX, nearY);
+      }, 0) / points.length;
     case 'Helix':
       return points.reduce((acc, p) => acc + Math.abs(Math.abs(p.x - centerX) - avgR), 0) / points.length;
+    case 'Cylinder':
+      return points.reduce((acc, p) => acc + Math.abs(Math.abs(p.x - centerX) - avgR * 0.75), 0) / points.length;
+    case 'Sphere':
+      return radii.reduce((acc, r) => acc + Math.abs(r - avgR * 0.9), 0) / points.length;
+    case 'Torus':
+      return points.reduce((acc, p) => {
+        const r = Math.hypot(p.x - centerX, p.y - centerY);
+        return acc + Math.min(Math.abs(r - avgR * 0.65), Math.abs(r - avgR * 1.1));
+      }, 0) / points.length;
+    case 'Möbius':
+      return points.reduce((acc, p, i) => acc + Math.abs((p.y - centerY) - Math.sin((i / points.length) * Math.PI * 2) * (p.x - centerX) * 0.25), 0) / points.length;
+    case 'Hyperbolic Disk':
+      return points.reduce((acc, p) => acc + Math.abs(Math.hypot(p.x - centerX, p.y - centerY) - avgR * 0.6) * 0.6, 0) / points.length;
+    case 'Hypersphere Projection':
+      return radii.reduce((acc, r) => acc + Math.abs(r - avgR * 0.82), 0) / points.length;
+    case 'Tesseract Projection':
+      return points.reduce((acc, p) => {
+        const dx = Math.abs(p.x - centerX);
+        const dy = Math.abs(p.y - centerY);
+        return acc + Math.abs(Math.max(dx, dy) - avgR * 0.95);
+      }, 0) / points.length;
     default:
       return 999;
   }
@@ -135,7 +206,7 @@ const fitError = (points: Array<{ x: number; y: number }>, model: string) => {
 
 export const ExplorerScreen = () => {
   const { entries, intentions, addIntention, removeIntention } = useGeomodeStore();
-  const [shapeId, setShapeId] = useState<ShapeId>('sphere');
+  const [shapeId, setShapeId] = useState<ShapeId>('line');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
@@ -144,21 +215,22 @@ export const ExplorerScreen = () => {
   const [autoSpin, setAutoSpin] = useState(true);
 
   const basePoints = useMemo(() => {
+    if (entries.length === 0) return toDemoPoints();
     if (graphLayer === 'emotion') return toEmotionPoints(entries);
     if (graphLayer === 'narrative') return toNarrativePoints(entries);
     return [...toEmotionPoints(entries), ...toNarrativePoints(entries)];
   }, [entries, graphLayer]);
 
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints), [shapeId, basePoints]);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1300, 650, rotation), [shapedPoints, rotation]);
+  const [zoom, setZoom] = useState(1);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1880, 1120, rotation, zoom), [shapedPoints, rotation, zoom]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
     const projected = chartPoints.map((p) => ({ x: p.px, y: p.py }));
-    const models = ['Line', 'Cycle', 'Spiral', 'Helix'];
-    return models.map((model) => {
+    return GEOMETRY_MODELS.map((model) => {
       const error = fitError(projected, model);
-      return { model, confidence: Math.round(clamp(100 - error * 8, 8, 98)) };
+      return { model, confidence: Math.round(clamp(100 - error * 7.5, 8, 98)) };
     }).sort((a, b) => b.confidence - a.confidence);
   }, [chartPoints]);
 
@@ -248,12 +320,15 @@ export const ExplorerScreen = () => {
 
         <section className="center-panel">
           <div className="shape-strip inline">
-            {SHAPES.map((shape) => (
-              <button key={shape} className={shapeId === shape ? 'selected' : ''} onClick={() => setShapeId(shape)}>{shape}</button>
+            {SHAPE_OPTIONS.map((shape) => (
+              <button key={shape.id} className={shapeId === shape.id ? 'selected' : ''} onClick={() => setShapeId(shape.id)}>{shape.label}</button>
             ))}
             <button onClick={() => setAutoSpin((prev) => !prev)}>{autoSpin ? 'Pause spin' : 'Auto spin'}</button>
             <span className="hint">Shift+drag/middle-drag = rotate 3D · Click nodes = toggle highlight · Drag box = range highlight</span>
           </div>
+          <label>Zoom
+            <input type="range" min={1} max={2.4} step={0.05} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+          </label>
           <label>Graph layer
             <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
               <option value="emotion">Emotion only</option>
@@ -262,27 +337,27 @@ export const ExplorerScreen = () => {
             </select>
           </label>
 
-          {entries.length > 0 ? (
-            <SimpleChart
-              width={1300}
-              height={650}
-              points={shapedPoints}
-              highlightIds={selectedIds}
-              selectionBox={selectionBox}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointClick={(id) => {
-                setSelectedIds((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(id)) next.delete(id);
-                  else next.add(id);
-                  return next;
-                });
-              }}
-              rotation={rotation}
-            />
-          ) : <p className="empty-state">No logs yet. Add entries on the Daily log page first.</p>}
+          <SimpleChart
+            width={1880}
+            height={1120}
+            zoom={zoom}
+            points={shapedPoints}
+            highlightIds={selectedIds}
+            selectionBox={selectionBox}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointClick={(id) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
+            rotation={rotation}
+          />
+          {entries.length === 0 && <p className="empty-state">Showing demo points. Add entries on the Daily log page to visualize your data.</p>}
         </section>
 
         <aside className="right-panel">

@@ -8,8 +8,8 @@ type PageId = 'log' | 'map';
 
 const getPageFromHash = (): PageId => {
   const hash = window.location.hash.replace('#', '');
-  if (hash === 'map') return 'map';
-  return 'log';
+  if (hash === 'log') return 'log';
+  return 'map';
 };
 
 export const App = () => {
