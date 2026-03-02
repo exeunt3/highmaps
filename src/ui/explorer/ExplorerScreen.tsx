@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useEffect, useMemo, useState, type PointerEvent } from 'react';
 import type { EmbeddedPoint } from '../../types/models';
 import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
-const SHAPES = ['line', 'circle', 'spiral', 'helix', 'sphere', 'torus', 'wave', 'grid'] as const;
+const SHAPES = ['sphere', 'hypersphere', 'tesseract', 'simplex4'] as const;
 type ShapeId = (typeof SHAPES)[number];
 type GraphLayer = 'emotion' | 'narrative' | 'both';
 
@@ -17,58 +17,66 @@ const INTENTIONS = [
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
-const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[], control: number) => {
-  const period = Math.max(4, 7 + control * 4);
-  const scale = 1.6 + control * 0.45;
-  return points.map((point, i) => {
-    const t = i / Math.max(1, points.length - 1);
-    const theta = (Math.PI * 2 * i) / period;
-    switch (shapeId) {
-      case 'line':
-        return { ...point, x: t * 10 - 5, y: 0, z: Math.sin(theta * 0.35) * 0.8 };
-      case 'circle':
-        return { ...point, x: Math.cos(theta) * scale, y: Math.sin(theta) * scale, z: Math.sin(theta * 1.4) * 1.1 };
-      case 'spiral': {
-        const r = 0.3 + t * 2.4 * scale;
-        return { ...point, x: Math.cos(theta) * r, y: Math.sin(theta) * r, z: t * 5 - 2.5 };
-      }
-      case 'helix':
-        return { ...point, x: Math.cos(theta) * scale, y: t * 5 - 2.5 + Math.sin(theta * 0.4) * 0.6, z: Math.sin(theta) * scale * 1.4 };
-      case 'sphere': {
-        const phi = Math.PI * t;
-        return {
-          ...point,
-          x: Math.cos(theta) * Math.sin(phi) * 2,
-          y: Math.cos(phi) * 2,
-          z: Math.sin(theta) * Math.sin(phi) * 2,
-        };
-      }
-      case 'torus': {
-        const phi = (Math.PI * 2 * i) / Math.max(points.length, 1);
-        const ring = 1.4 + 0.65 * Math.cos(theta * 0.8);
-        return { ...point, x: ring * Math.cos(phi), y: ring * Math.sin(phi), z: Math.sin(theta * 0.8) * 1.6 };
-      }
-      case 'grid': {
-        const cols = Math.max(3, Math.round(8 + control * 2));
-        const row = Math.floor(i / cols);
-        const col = i % cols;
-        return {
-          ...point,
-          x: col - cols / 2,
-          y: row * 0.75 - 4,
-          z: Math.sin(col * 0.7) * 0.8 + Math.cos(row * 0.6) * 0.8,
-        };
-      }
-      case 'wave':
-        return {
-          ...point,
-          x: t * 12 - 6,
-          y: Math.sin(theta) * (1.2 + control * 0.2),
-          z: Math.cos(theta * 0.55) * (1.4 + control * 0.15),
-        };
+const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.map((point, i) => {
+  const t = i / Math.max(1, points.length - 1);
+  const theta = t * Math.PI * 2;
+  const phi = t * Math.PI;
+
+  switch (shapeId) {
+    case 'sphere':
+      return {
+        ...point,
+        x: Math.cos(theta) * Math.sin(phi) * 2.3,
+        y: Math.cos(phi) * 2.3,
+        z: Math.sin(theta) * Math.sin(phi) * 2.3,
+      };
+    case 'hypersphere': {
+      const chi = t * Math.PI * 1.5;
+      const w = Math.cos(chi);
+      return {
+        ...point,
+        x: Math.cos(theta) * Math.sin(phi) * (1.4 + w),
+        y: Math.sin(theta) * Math.sin(phi) * (1.4 + w),
+        z: Math.cos(phi) * (1.4 + w),
+      };
     }
-  });
-};
+    case 'tesseract': {
+      const corners = [
+        [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
+        [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
+        [-1, -1, -1, 1], [1, -1, -1, 1], [-1, 1, -1, 1], [1, 1, -1, 1],
+        [-1, -1, 1, 1], [1, -1, 1, 1], [-1, 1, 1, 1], [1, 1, 1, 1],
+      ] as const;
+      const idx = Math.floor(t * corners.length) % corners.length;
+      const [x, y, z, w] = corners[idx];
+      const perspective4d = 1 / (2.4 - w * 0.75);
+      return {
+        ...point,
+        x: x * perspective4d * 3,
+        y: y * perspective4d * 3,
+        z: z * perspective4d * 3,
+      };
+    }
+    case 'simplex4': {
+      const verts = [
+        [1, 1, 1, -1 / Math.sqrt(5)],
+        [1, -1, -1, -1 / Math.sqrt(5)],
+        [-1, 1, -1, -1 / Math.sqrt(5)],
+        [-1, -1, 1, -1 / Math.sqrt(5)],
+        [0, 0, 0, 4 / Math.sqrt(5)],
+      ] as const;
+      const idx = Math.floor(t * verts.length) % verts.length;
+      const [x, y, z, w] = verts[idx];
+      const perspective4d = 1 / (2.2 - w * 0.65);
+      return {
+        ...point,
+        x: x * perspective4d * 3,
+        y: y * perspective4d * 3,
+        z: z * perspective4d * 3,
+      };
+    }
+  }
+});
 
 const toEmotionPoints = (entries: GeomodeEntry[]): EmbeddedPoint[] => entries.map((entry, index) => ({
   id: `${entry.id}|emotion`,
@@ -127,8 +135,7 @@ const fitError = (points: Array<{ x: number; y: number }>, model: string) => {
 
 export const ExplorerScreen = () => {
   const { entries, intentions, addIntention, removeIntention } = useGeomodeStore();
-  const [shapeId, setShapeId] = useState<ShapeId>('line');
-  const [control, setControl] = useState(1);
+  const [shapeId, setShapeId] = useState<ShapeId>('sphere');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
@@ -142,8 +149,8 @@ export const ExplorerScreen = () => {
     return [...toEmotionPoints(entries), ...toNarrativePoints(entries)];
   }, [entries, graphLayer]);
 
-  const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints, control), [shapeId, basePoints, control]);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 980, 500, rotation), [shapedPoints, rotation]);
+  const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints), [shapeId, basePoints]);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1300, 650, rotation), [shapedPoints, rotation]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
@@ -178,15 +185,6 @@ export const ExplorerScreen = () => {
     const distance = Math.abs(metric - intent.target);
     return { ...intent, score: Math.round((1 - distance) * 100) };
   }), [entries, intentions]);
-
-  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (event.shiftKey) {
-      setRotation((prev) => ({ ...prev, roll: clamp(prev.roll + Math.sign(event.deltaY) * 0.08, -1.2, 1.2) }));
-      return;
-    }
-    setControl((prev) => clamp(prev + Math.sign(event.deltaY) * -0.12, 0.5, 4));
-  };
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -232,7 +230,7 @@ export const ExplorerScreen = () => {
   };
 
   return (
-    <section className="geomode-shell" onWheel={onWheel}>
+    <section className="geomode-shell">
       <header className="top-bar">
         <strong>GEOMODE — Geometry map</strong>
       </header>
@@ -254,7 +252,7 @@ export const ExplorerScreen = () => {
               <button key={shape} className={shapeId === shape ? 'selected' : ''} onClick={() => setShapeId(shape)}>{shape}</button>
             ))}
             <button onClick={() => setAutoSpin((prev) => !prev)}>{autoSpin ? 'Pause spin' : 'Auto spin'}</button>
-            <span className="hint">Scroll = morph shape · Shift+drag/middle-drag = rotate 3D · Shift+scroll = roll</span>
+            <span className="hint">Shift+drag/middle-drag = rotate 3D · Click nodes = toggle highlight · Drag box = range highlight</span>
           </div>
           <label>Graph layer
             <select value={graphLayer} onChange={(event) => setGraphLayer(event.target.value as GraphLayer)}>
@@ -266,14 +264,22 @@ export const ExplorerScreen = () => {
 
           {entries.length > 0 ? (
             <SimpleChart
-              width={980}
-              height={500}
+              width={1300}
+              height={650}
               points={shapedPoints}
               highlightIds={selectedIds}
               selectionBox={selectionBox}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onPointClick={(id) => {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                });
+              }}
               rotation={rotation}
             />
           ) : <p className="empty-state">No logs yet. Add entries on the Daily log page first.</p>}
