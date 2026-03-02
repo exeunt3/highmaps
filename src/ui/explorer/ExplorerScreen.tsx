@@ -3,7 +3,21 @@ import type { EmbeddedPoint } from '../../types/models';
 import { useGeomodeStore, type GeomodeEntry } from '../../state/store';
 import { projectPoints, SimpleChart } from '../components/SimpleChart';
 
-const SHAPES = ['sphere', 'hypersphere', 'tesseract', 'simplex4'] as const;
+const SHAPES = [
+  'line',
+  'circle',
+  'spiral',
+  'wave',
+  'grid',
+  'helix',
+  'cylinder',
+  'sphere',
+  'torus',
+  'mobius',
+  'hyperbolic-disk',
+  'hypersphere-projection',
+  'tesseract-projection',
+] as const;
 const GEOMETRY_MODELS = [
   'Line',
   'Circle',
@@ -21,6 +35,22 @@ const GEOMETRY_MODELS = [
 ] as const;
 type ShapeId = (typeof SHAPES)[number];
 type GraphLayer = 'emotion' | 'narrative' | 'both';
+
+const SHAPE_OPTIONS: Array<{ id: ShapeId; label: string }> = [
+  { id: 'line', label: 'Line' },
+  { id: 'circle', label: 'Circle' },
+  { id: 'spiral', label: 'Spiral' },
+  { id: 'wave', label: 'Wave' },
+  { id: 'grid', label: 'Grid' },
+  { id: 'helix', label: 'Helix' },
+  { id: 'cylinder', label: 'Cylinder' },
+  { id: 'sphere', label: 'Sphere' },
+  { id: 'torus', label: 'Torus' },
+  { id: 'mobius', label: 'Möbius' },
+  { id: 'hyperbolic-disk', label: 'Hyperbolic Disk' },
+  { id: 'hypersphere-projection', label: 'Hypersphere Projection' },
+  { id: 'tesseract-projection', label: 'Tesseract Projection' },
+];
 
 const INTENTIONS = [
   { label: 'Stabilize weekly baseline', target: 0.75 },
@@ -95,18 +125,6 @@ const shapeProjection = (shapeId: ShapeId, points: EmbeddedPoint[]) => points.ma
         y: Math.sin(theta) * Math.sin(phi) * (1.3 + w),
         z: Math.cos(phi) * (1.3 + w),
       };
-    }
-    case 'tesseract-projection': {
-      const corners = [
-        [-1, -1, -1, -1], [1, -1, -1, -1], [-1, 1, -1, -1], [1, 1, -1, -1],
-        [-1, -1, 1, -1], [1, -1, 1, -1], [-1, 1, 1, -1], [1, 1, 1, -1],
-        [-1, -1, -1, 1], [1, -1, -1, 1], [-1, 1, -1, 1], [1, 1, -1, 1],
-        [-1, -1, 1, 1], [1, -1, 1, 1], [-1, 1, 1, 1], [1, 1, 1, 1],
-      ] as const;
-      const idx = Math.floor(t * corners.length) % corners.length;
-      const [x, y, z, w] = corners[idx];
-      const perspective4d = 1 / (2.4 - w * 0.75);
-      return { ...point, x: x * perspective4d * 3, y: y * perspective4d * 3, z: z * perspective4d * 3 };
     }
     case 'tesseract-projection': {
       const corners = [
@@ -225,6 +243,7 @@ export const ExplorerScreen = () => {
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number }>();
   const [graphLayer, setGraphLayer] = useState<GraphLayer>('both');
   const [rotation, setRotation] = useState({ yaw: 0.4, pitch: -0.3, roll: 0 });
+  const [zoom, setZoom] = useState(1.2);
   const [rotating, setRotating] = useState<{ x: number; y: number }>();
   const [autoSpin, setAutoSpin] = useState(true);
 
@@ -236,7 +255,7 @@ export const ExplorerScreen = () => {
   }, [entries, graphLayer]);
 
   const shapedPoints = useMemo(() => shapeProjection(shapeId, basePoints), [shapeId, basePoints]);
-  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1560, 860, rotation), [shapedPoints, rotation]);
+  const chartPoints = useMemo(() => projectPoints(shapedPoints, 1560, 860, rotation, zoom), [shapedPoints, rotation, zoom]);
 
   const summaries = useMemo(() => computeSummary(entries), [entries]);
   const geometryMatches = useMemo(() => {
@@ -369,6 +388,7 @@ export const ExplorerScreen = () => {
                 });
               }}
               rotation={rotation}
+              zoom={zoom}
             />
           ) : <p className="empty-state">No logs yet. Add entries on the Daily log page first.</p>}
         </section>
